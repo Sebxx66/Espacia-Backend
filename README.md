@@ -84,7 +84,7 @@ Todo se configura con variables de entorno; los valores por defecto coinciden co
 | `DB_USERNAME` | `postgres` | Usuario de la base de datos |
 | `DB_PASSWORD` | `bibliospace` | Contraseña de la base de datos (también la usa `docker compose`) |
 | `JWT_SECRET` | valor de desarrollo | Clave para firmar los tokens (mínimo 32 caracteres). **Cámbiala en producción** |
-| `CORS_ALLOWED_ORIGINS` | `localhost` y `127.0.0.1` en los puertos 5173 y 8443 | Orígenes del frontend, separados por coma |
+| `CORS_ALLOWED_ORIGINS` | `localhost` y `127.0.0.1` en los puertos 5173 y 8443 | Orígenes del frontend, separados por coma. En desarrollo el frontend reenvía sus llamadas por su propio servidor, así que no hace falta agregar la IP de cada celular |
 | `FRONTEND_URL` | `http://localhost:8443` | Dirección del frontend, usada en los enlaces de los correos |
 | `ADMIN_NOMBRE`, `ADMIN_EMAIL`, `ADMIN_PASSWORD` | ver arriba | Administrador inicial |
 | `SEED_DEMO_DATA` | `true` | Crear datos de demostración |
@@ -113,6 +113,10 @@ El registro público siempre crea estudiantes. Las cuentas de funcionario y admi
 - Si un espacio pasa a mantenimiento o inactivo, sus reservas futuras se anulan y se notifica a los usuarios.
 - Las contraseñas deben tener al menos 8 caracteres.
 - Tras 5 contraseñas incorrectas seguidas, la cuenta se bloquea 15 minutos. La recuperación de contraseña admite 3 solicitudes por hora por correo.
+
+## Historial de cambios
+
+Ver [CHANGELOG.md](CHANGELOG.md).
 
 ## API
 
