@@ -5,6 +5,14 @@ Spring Boot 4 · Java 25 · Spring Security + JWT · PostgreSQL.
 
 El frontend está en el repositorio [BiblioSpace-Frontend](https://github.com/Sebxx66/BiblioSpace-Frontend).
 
+## Vista previa
+
+La interfaz completa está en el repositorio del frontend.
+
+| Catálogo de espacios | Panel del administrador |
+|---|---|
+| ![Catálogo de espacios](docs/screenshots/02-catalogo.jpg) | ![Panel del administrador](docs/screenshots/05-admin-dashboard.jpg) |
+
 ## Funciones
 
 - Registro e inicio de sesión con roles (estudiante, funcionario y administrador).
