@@ -3,6 +3,7 @@ package com.bibliospace.backend;
 import com.bibliospace.backend.support.ApiTestBase;
 import org.junit.jupiter.api.Test;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -43,9 +44,10 @@ class ConcurrencyApiTests extends ApiTestBase {
         String[][] bloques = {{"08:00", "09:00"}, {"09:00", "10:00"}, {"10:00", "11:00"},
                 {"11:00", "12:00"}, {"12:00", "13:00"}, {"13:00", "14:00"}};
 
+        // Cada reserva va en un día distinto para que el límite diario (2 salas por día) no interfiera
         List<Integer> indices = List.of(0, 1, 2, 3, 4, 5);
         List<Integer> estados = enParalelo(indices,
-                i -> reserve(token, espacios.get(i), tomorrow(), bloques[i][0], bloques[i][1]).status());
+                i -> reserve(token, espacios.get(i), LocalDate.now().plusDays(i + 1), bloques[i][0], bloques[i][1]).status());
 
         assertThat(estados).filteredOn(s -> s == 200).hasSize(3);
         assertThat(get("/reservations/me", token).body().size()).isEqualTo(3);
