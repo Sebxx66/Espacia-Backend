@@ -1,0 +1,24 @@
+# Base de datos PostgreSQL para desarrollo local.
+# Arranca con:  docker compose up -d
+# Los datos se guardan en el volumen "bibliospace-data" y sobreviven a reinicios.
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: bibliospace-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: bibliospace_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-bibliospace}
+    ports:
+      - "5432:5432"
+    volumes:
+      - bibliospace-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d bibliospace_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  bibliospace-data:
