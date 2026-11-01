@@ -2,6 +2,10 @@
 
 Cambios del backend de Espacia, del más reciente al más antiguo. Cada entrada explica qué cambió y cómo está hecho.
 
+## 1.1.1 — Prueba de horas pasadas
+
+- El backend ya rechazaba reservas cuya hora de inicio ya pasó (`ReservationService.create` compara fecha y hora de inicio con el momento actual y responde 400 con "No puedes reservar en una fecha u hora que ya pasó."). Se agrega la prueba `rechazaHorasDeHoyQueYaPasaron`, que intenta reservar la hora en curso del mismo día; antes solo se probaban días anteriores.
+
 ## 1.1.0 — Nuevo nombre: Espacia
 
 - Los correos se envían con el nombre **Espacia**: asunto, firma y nombre del remitente (`MAIL_FROM_NAME`, por defecto `Espacia`).

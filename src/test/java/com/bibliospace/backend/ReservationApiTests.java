@@ -52,6 +52,21 @@ class ReservationApiTests extends ApiTestBase {
     }
 
     @Test
+    void rechazaHorasDeHoyQueYaPasaron() {
+        // Reserva la hora en curso (por ejemplo 15:00 si son las 15:40): ya empezó, así que se rechaza.
+        // Solo aplica dentro del horario de la biblioteca (8:00 a 20:00).
+        LocalTime ahora = LocalTime.now();
+        assumeTrue(ahora.getHour() >= 8 && ahora.getHour() < 20);
+        String token = newStudent();
+        long espacio = newSpace();
+
+        Response r = reserve(token, espacio, LocalDate.now(),
+                String.format("%02d:00", ahora.getHour()), String.format("%02d:00", ahora.getHour() + 1));
+        assertThat(r.status()).isEqualTo(400);
+        assertThat(r.body().get("message").asString()).contains("ya pasó");
+    }
+
+    @Test
     void noPermiteReservasSuperpuestasEnElMismoEspacio() {
         long espacio = newSpace();
         reserve(newStudent(), espacio, tomorrow(), "10:00", "12:00");
