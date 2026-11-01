@@ -12,7 +12,7 @@
     <artifactId>backend</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>backend</name>
-    <description>API REST de BiblioSpace: reserva de espacios y recursos de la biblioteca</description>
+    <description>API REST de Espacia: reserva de espacios y recursos de la biblioteca</description>
     
     <properties>
         <java.version>25</java.version>

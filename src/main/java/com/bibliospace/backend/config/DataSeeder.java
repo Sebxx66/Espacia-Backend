@@ -175,7 +175,7 @@ public class DataSeeder implements CommandLineRunner {
         notificationRepository.save(Notification.builder().usuario(camila).tipo("CONFIRMACION").leida(false)
                 .mensaje("Tu reserva en Sala de Conferencias C3 quedó confirmada.").build());
         notificationRepository.save(Notification.builder().usuario(camila).tipo("FINALIZADA").leida(true)
-                .mensaje("Tu reserva en Sala de Estudio A1 finalizó. ¡Gracias por usar BiblioSpace!").build());
+                .mensaje("Tu reserva en Sala de Estudio A1 finalizó. ¡Gracias por usar Espacia!").build());
 
         log.info("Datos de demostración listos. Cuentas: estudiante@bibliospace.local, funcionario@bibliospace.local (contraseña de demostración)");
     }

@@ -1,9 +1,9 @@
-# BiblioSpace — Backend
+# Espacia — Backend
 
 API REST para reservar salas de estudio, equipos y talleres de una biblioteca.
 Spring Boot 4 · Java 25 · Spring Security + JWT · PostgreSQL.
 
-El frontend está en el repositorio [BiblioSpace-Frontend](https://github.com/Sebxx66/BiblioSpace-Frontend).
+El frontend está en el repositorio [Espacia-Frontend](https://github.com/Sebxx66/Espacia-Frontend).
 
 ## Vista previa
 
@@ -90,7 +90,7 @@ Todo se configura con variables de entorno; los valores por defecto coinciden co
 | `SEED_DEMO_DATA` | `true` | Crear datos de demostración |
 | `SEED_DEMO_PASSWORD` | `Demo12345` | Contraseña de las cuentas de demostración |
 | `MAIL_USERNAME`, `MAIL_PASSWORD` | vacío | Cuenta SMTP. Sin ellas el envío queda desactivado |
-| `MAIL_HOST`, `MAIL_PORT`, `MAIL_FROM_NAME` | `smtp.gmail.com`, `587`, `BiblioSpace` | Servidor SMTP y nombre del remitente |
+| `MAIL_HOST`, `MAIL_PORT`, `MAIL_FROM_NAME` | `smtp.gmail.com`, `587`, `Espacia` | Servidor SMTP y nombre del remitente |
 | `REMINDER_MINUTES` | `60` | Minutos antes del inicio en que se envía el recordatorio |
 
 ## Roles

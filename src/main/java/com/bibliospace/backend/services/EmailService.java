@@ -24,7 +24,7 @@ public class EmailService {
 
     public EmailService(ObjectProvider<JavaMailSender> mailSenderProvider,
                         @Value("${spring.mail.username:}") String username,
-                        @Value("${app.mail.from-name:BiblioSpace}") String fromName,
+                        @Value("${app.mail.from-name:Espacia}") String fromName,
                         @Value("${app.frontend-url:http://localhost:8443}") String frontendUrl) {
         this.mailSender = mailSenderProvider.getIfAvailable();
         this.username = username == null ? "" : username.trim();
@@ -38,9 +38,9 @@ public class EmailService {
 
     @Async
     public void sendWelcome(String to, String nombre) {
-        deliver(to, "¡Bienvenido/a a BiblioSpace!", layout(
+        deliver(to, "¡Bienvenido/a a Espacia!", layout(
                 "¡Bienvenido/a, " + esc(nombre) + "!",
-                "<p>Tu cuenta en BiblioSpace se creó correctamente. Ya puedes iniciar sesión para reservar "
+                "<p>Tu cuenta en Espacia se creó correctamente. Ya puedes iniciar sesión para reservar "
                         + "salas de estudio, equipos y talleres de la biblioteca.</p>"
                         + boton(frontendUrl + "/", "Iniciar sesión")
                         + "<p style=\"font-size:13px;color:#6b7280\">Si no creaste esta cuenta, ignora este mensaje.</p>"));
@@ -54,7 +54,7 @@ public class EmailService {
             case "RECHAZADA" -> "Reserva anulada";
             default -> "Novedad en tu reserva";
         };
-        deliver(to, asunto + " · BiblioSpace", layout(
+        deliver(to, asunto + " · Espacia", layout(
                 esc(asunto),
                 "<p>Hola, " + esc(nombre) + ".</p><p>" + esc(mensaje) + "</p>"
                         + boton(frontendUrl + "/", "Ver mis reservas")));
@@ -62,7 +62,7 @@ public class EmailService {
 
     @Async
     public void sendReminder(String to, String nombre, String mensaje) {
-        deliver(to, "Recordatorio de tu reserva · BiblioSpace", layout(
+        deliver(to, "Recordatorio de tu reserva · Espacia", layout(
                 "Tu reserva empieza pronto",
                 "<p>Hola, " + esc(nombre) + ".</p><p>" + esc(mensaje) + "</p>"
                         + boton(frontendUrl + "/", "Ver mis reservas")));
@@ -75,7 +75,7 @@ public class EmailService {
             log.info("[correo desactivado] Enlace para restablecer la contraseña de {}: {}", to, link);
             return;
         }
-        deliver(to, "Restablece tu contraseña · BiblioSpace", layout(
+        deliver(to, "Restablece tu contraseña · Espacia", layout(
                 "Restablece tu contraseña",
                 "<p>Hola, " + esc(nombre) + ".</p>"
                         + "<p>Recibimos una solicitud para cambiar la contraseña de tu cuenta. "
@@ -121,7 +121,7 @@ public class EmailService {
                 + "<div style=\"max-width:560px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;"
                 + "border:1px solid #e3e8f5\">"
                 + "<div style=\"background:#4C6EF5;padding:22px 28px\">"
-                + "<div style=\"font-size:22px;font-weight:700;color:#ffffff;letter-spacing:.3px\">&#128218; BiblioSpace</div>"
+                + "<div style=\"font-size:22px;font-weight:700;color:#ffffff;letter-spacing:.3px\"><span style=\"display:inline-block;width:30px;height:30px;line-height:30px;text-align:center;background:#ffffff;color:#4C6EF5;border-radius:9px;margin-right:10px\">E</span>Espacia</div>"
                 + "<div style=\"font-size:13px;color:#dbe4ff;margin-top:4px\">Reserva de espacios y recursos de la biblioteca</div>"
                 + "</div>"
                 + "<div style=\"padding:28px;font-size:15px;line-height:1.55\">"
