@@ -78,8 +78,40 @@ class AuthApiTests extends ApiTestBase {
         Response buena = patch("/auth/password", Map.of("actual", PASSWORD, "nueva", "nueva-clave-9"), token);
 
         assertThat(mala.status()).isEqualTo(400);
-        assertThat(buena.status()).isEqualTo(204);
+        assertThat(buena.status()).isEqualTo(200);
+        assertThat(buena.body().get("token").asString()).isNotBlank();
         assertThat(post("/auth/login", Map.of("email", email, "password", "nueva-clave-9"), null).status()).isEqualTo(200);
+    }
+
+    @Test
+    void cambiarLaContrasenaCierraLasDemasSesiones() throws InterruptedException {
+        String email = uniqueEmail("sesiones");
+        String celular = post("/auth/register", Map.of("nombre", "Ana", "email", email, "password", PASSWORD), null)
+                .body().get("token").asString();
+        String computador = login(email, PASSWORD);
+        // Los tokens guardan la hora de emisión en segundos: se espera para que el cambio sea posterior
+        Thread.sleep(1100);
+
+        Response cambio = patch("/auth/password", Map.of("actual", PASSWORD, "nueva", "nueva-clave-9"), computador);
+        String nuevo = cambio.body().get("token").asString();
+
+        assertThat(get("/auth/me", celular).status()).isEqualTo(401);
+        assertThat(get("/auth/me", computador).status()).isEqualTo(401);
+        assertThat(get("/auth/me", nuevo).status()).isEqualTo(200);
+    }
+
+    @Test
+    void restablecerLaContrasenaCierraLasSesionesDelUsuario() throws InterruptedException {
+        String email = uniqueEmail("reset-sesion");
+        Response registro = post("/auth/register", Map.of("nombre", "Ana", "email", email, "password", PASSWORD), null);
+        String token = registro.body().get("token").asString();
+        long id = registro.body().get("id").asLong();
+        Thread.sleep(1100);
+
+        assertThat(patch("/users/" + id + "/password", Map.of("password", "temporal-123"), adminToken()).status()).isEqualTo(204);
+
+        assertThat(get("/auth/me", token).status()).isEqualTo(401);
+        assertThat(get("/auth/me", login(email, "temporal-123")).status()).isEqualTo(200);
     }
 
     @Test

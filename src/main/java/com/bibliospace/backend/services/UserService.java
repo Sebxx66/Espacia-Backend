@@ -98,7 +98,8 @@ public class UserService {
     @Transactional
     public void resetPassword(Long id, PasswordResetRequest request) {
         User user = find(id);
-        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        // Las sesiones abiertas del usuario se cierran
+        user.cambiarPassword(passwordEncoder.encode(request.getPassword()));
     }
 
     private User find(Long id) {

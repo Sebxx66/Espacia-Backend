@@ -159,6 +159,18 @@ class ReservationApiTests extends ApiTestBase {
     }
 
     @Test
+    void noSePuedeExtenderEncimaDeOtraReservaPropia() {
+        String token = newStudent();
+        long sala = reserve(token, newSpace(), tomorrow(), "10:00", "11:00").body().get("id").asLong();
+        assertThat(reserve(token, newSpace("EQUIPO_TECNOLOGICO"), tomorrow(), "11:00", "12:00").status()).isEqualTo(200);
+
+        Response r = patch("/reservations/" + sala + "/extend", null, token);
+
+        assertThat(r.status()).isEqualTo(409);
+        assertThat(r.message()).contains("otra reserva");
+    }
+
+    @Test
     void extenderSumaUnaHoraSinPasarDe4NiChocar() {
         String token = newStudent();
         long espacio = newSpace();

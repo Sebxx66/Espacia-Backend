@@ -13,6 +13,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
@@ -50,9 +52,9 @@ public class AuthController {
         return ResponseEntity.ok(authService.me());
     }
 
+    // Cierra las demás sesiones del usuario y devuelve un token nuevo para seguir en este dispositivo
     @PatchMapping("/password")
-    public ResponseEntity<Void> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
-        authService.changePassword(request);
-        return ResponseEntity.noContent().build();
+    public ResponseEntity<Map<String, String>> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
+        return ResponseEntity.ok(Map.of("token", authService.changePassword(request)));
     }
 }

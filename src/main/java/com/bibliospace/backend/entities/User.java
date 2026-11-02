@@ -5,7 +5,9 @@ import lombok.*;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.CreationTimestamp;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 
 @Entity
 @Table(name = "users")
@@ -41,4 +43,14 @@ public class User {
     @CreationTimestamp
     @Column(updatable = false)
     private LocalDateTime creadoEn;
+
+    // Momento del último cambio de contraseña: los tokens emitidos antes dejan de servir
+    private Instant passwordCambiadaEn;
+
+    // Guarda la nueva contraseña (ya cifrada) y cierra las sesiones abiertas con la anterior.
+    // Se redondea al segundo porque los tokens guardan la hora de emisión en segundos.
+    public void cambiarPassword(String hash) {
+        this.password = hash;
+        this.passwordCambiadaEn = Instant.now().truncatedTo(ChronoUnit.SECONDS);
+    }
 }

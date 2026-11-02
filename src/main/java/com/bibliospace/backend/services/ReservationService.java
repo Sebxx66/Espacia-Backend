@@ -197,6 +197,15 @@ public class ReservationService {
         if (hayChoque(reserva.getEspacio().getId(), reserva.getFecha(), reserva.getHoraFin(), nuevoFin, reserva.getId())) {
             throw ApiException.conflict("El espacio ya está reservado justo después de tu horario.");
         }
+        // Tampoco puede quedar encima de otra reserva del mismo usuario (por ejemplo, un equipo a continuación)
+        LocalTime finActual = reserva.getHoraFin();
+        boolean choqueMio = reservationRepository.findByUsuarioId(reserva.getUsuario().getId()).stream()
+                .anyMatch(r -> !r.getId().equals(reserva.getId()) && r.getEstado().ocupaHorario()
+                        && r.getFecha().equals(reserva.getFecha())
+                        && seSolapan(r.getHoraInicio(), r.getHoraFin(), finActual, nuevoFin));
+        if (choqueMio) {
+            throw ApiException.conflict("Tienes otra reserva justo después de este horario.");
+        }
         reserva.setHoraFin(nuevoFin);
         notificationService.notify(reserva.getUsuario(), "EXTENSION",
                 "Tu reserva " + codigo(reserva) + " ahora termina a las " + nuevoFin + ".");

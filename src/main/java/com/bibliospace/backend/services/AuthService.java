@@ -119,13 +119,15 @@ public class AuthService {
         return UserService.toResponse(currentUserService.get(), null);
     }
 
-    public void changePassword(ChangePasswordRequest request) {
+    // Cambia la contraseña, cierra las demás sesiones y devuelve un token nuevo para este dispositivo
+    public String changePassword(ChangePasswordRequest request) {
         User user = currentUserService.get();
         if (!passwordEncoder.matches(request.getActual(), user.getPassword())) {
             throw ApiException.badRequest("La contraseña actual no es correcta.");
         }
-        user.setPassword(passwordEncoder.encode(request.getNueva()));
+        user.cambiarPassword(passwordEncoder.encode(request.getNueva()));
         userRepository.save(user);
+        return jwtTokenProvider.generateTokenFor(user.getEmail());
     }
 
     // Siempre responde igual exista o no la cuenta, para no revelar qué emails están registrados
@@ -160,7 +162,7 @@ public class AuthService {
         if (!Boolean.TRUE.equals(user.getActivo())) {
             throw ApiException.forbidden("Tu cuenta está suspendida. Contacta al administrador.");
         }
-        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.cambiarPassword(passwordEncoder.encode(request.getPassword()));
         userRepository.save(user);
         // El enlace usado (y cualquier otro pendiente) deja de servir
         resetTokenRepository.invalidateAllForUser(user.getId());

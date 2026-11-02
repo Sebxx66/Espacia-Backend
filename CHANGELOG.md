@@ -2,6 +2,12 @@
 
 Cambios del backend de Espacia, del más reciente al más antiguo. Cada entrada explica qué cambió y cómo está hecho.
 
+## 1.3.0 — Sesiones y extensión de reservas
+
+- **Cambiar la contraseña cierra las sesiones abiertas.** `User` guarda `passwordCambiadaEn` cada vez que cambia la contraseña: al cambiarla desde la app, al restablecerla con el enlace del correo o cuando la restablece un administrador. `JwtAuthenticationFilter` compara esa fecha con la hora de emisión del token (`iat`) y deja de aceptar los tokens emitidos antes. Quien cambia su propia contraseña recibe un token nuevo en la respuesta de `PATCH /auth/password`, así que sigue conectado en ese dispositivo y se cierran los demás.
+- **Extender ya no puede quedar encima de otra reserva propia.** Antes solo se revisaba que el espacio estuviera libre en la hora siguiente. Ahora también se rechaza (409) si el usuario tiene otra reserva en ese horario, por ejemplo un equipo justo a continuación de una sala.
+- Pruebas nuevas: `cambiarLaContrasenaCierraLasDemasSesiones`, `restablecerLaContrasenaCierraLasSesionesDelUsuario` y `noSePuedeExtenderEncimaDeOtraReservaPropia`.
+
 ## 1.2.0 — Sin claves en el repositorio
 
 - **La clave de los tokens ya no está en el código.** `jwt.secret` se toma solo de la variable de entorno `JWT_SECRET`. Si no está definida, `JwtTokenProvider` genera al arrancar una clave aleatoria de 512 bits con `SecureRandom` y avisa en el log: sirve para desarrollo, pero las sesiones se cierran al reiniciar el backend. Si `JWT_SECRET` tiene menos de 32 caracteres, el backend no arranca y lo explica. La clave se calcula una sola vez al iniciar, en lugar de en cada token.

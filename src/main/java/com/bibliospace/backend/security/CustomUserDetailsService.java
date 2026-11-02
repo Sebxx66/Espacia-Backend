@@ -16,8 +16,11 @@ public class CustomUserDetailsService implements UserDetailsService {
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         User user = userRepository.findByEmailIgnoreCase(email)
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado con email: " + email));
+        return toDetails(user);
+    }
 
-        // Una cuenta suspendida por el administrador no puede iniciar sesión
+    // Una cuenta suspendida por el administrador no puede iniciar sesión
+    public static UserDetails toDetails(User user) {
         return org.springframework.security.core.userdetails.User.withUsername(user.getEmail())
                 .password(user.getPassword())
                 .authorities(user.getRol().name())
