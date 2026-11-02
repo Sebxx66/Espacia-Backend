@@ -88,7 +88,6 @@ Todo se configura con variables de entorno; los valores por defecto coinciden co
 | `MAIL_USERNAME`, `MAIL_PASSWORD` | vacío | Cuenta SMTP. Sin ellas el envío queda desactivado |
 | `MAIL_HOST`, `MAIL_PORT`, `MAIL_FROM_NAME` | `smtp.gmail.com`, `587`, `Espacia` | Servidor SMTP y nombre del remitente |
 | `REMINDER_MINUTES` | `60` | Minutos antes del inicio en que se envía el recordatorio |
-| `NO_SHOW_MINUTES` | `30` | Minutos después del inicio sin validar la llegada para liberar la reserva como no asistida |
 | `APP_TIME_ZONE` | `America/Bogota` | Zona horaria de la biblioteca. Las reglas de horario la usan aunque el servidor esté en otra zona |
 | `API_DOCS` | `true` | Muestra la documentación de la API en `/swagger-ui.html` |
 
@@ -103,6 +102,8 @@ Todo se configura con variables de entorno; los valores por defecto coinciden co
 El registro público siempre crea estudiantes. Las cuentas de funcionario y administrador las crea un administrador.
 
 ## Reglas de reserva
+
+El administrador las cambia desde **Configuración** en su panel (`PUT /api/v1/rules`) y se aplican de inmediato, sin reiniciar. Los valores de una instalación nueva son:
 
 - Horario de 08:00 a 20:00, máximo 4 horas por reserva.
 - Máximo 3 reservas activas por usuario y hasta 30 días de anticipación.
@@ -138,6 +139,7 @@ Todas las rutas empiezan por `/api/v1`. Los errores responden `{"message": "..."
 | `GET /users` · `POST /users` · `PATCH /users/{id}` · `PATCH /users/{id}/password` | Admin | Gestión de usuarios |
 | `GET /incidents` · `POST /incidents` · `PATCH /incidents/{id}/resolve` | Funcionario, admin | Soporte técnico |
 | `GET /admin/dashboard` | Admin | Estadísticas |
+| `GET /rules` · `PUT /rules` | Público · Admin | Reglas de reserva vigentes y su modificación |
 
 ## Licencia
 

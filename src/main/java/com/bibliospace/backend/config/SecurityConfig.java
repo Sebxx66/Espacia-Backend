@@ -41,6 +41,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/v1/auth/login", "/api/v1/auth/register",
                         "/api/v1/auth/forgot-password", "/api/v1/auth/reset-password").permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                // Las reglas de reserva vigentes se muestran en la pantalla de inicio y en los Términos de uso
+                .requestMatchers(HttpMethod.GET, "/api/v1/rules").permitAll()
                 // Para que los errores lleguen con su código real (400, 404...) y no como 403
                 .requestMatchers("/error").permitAll()
                 // Documentación de la API (se puede apagar con API_DOCS=false)

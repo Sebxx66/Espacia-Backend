@@ -2,6 +2,7 @@ package com.bibliospace.backend.services;
 
 import com.bibliospace.backend.dtos.request.ReservationRequest;
 import com.bibliospace.backend.dtos.response.ReservationResponse;
+import com.bibliospace.backend.entities.BookingRules;
 import com.bibliospace.backend.entities.Reservation;
 import com.bibliospace.backend.entities.ReservationStatus;
 import com.bibliospace.backend.entities.Space;
@@ -26,20 +27,12 @@ import java.util.Locale;
 @RequiredArgsConstructor
 public class ReservationService {
 
-    // Reglas de uso (las mismas que muestra el frontend)
-    public static final LocalTime APERTURA = LocalTime.of(8, 0);
-    public static final LocalTime CIERRE = LocalTime.of(20, 0);
-    public static final int MAX_HORAS = 4;
-    public static final int MAX_ACTIVAS = 3;
-    // Máximo de reservas por usuario y por día, según el tipo de espacio
-    public static final int MAX_EQUIPOS_DIA = 1;
-    public static final int MAX_SALAS_DIA = 2;
+    // Las reglas de uso (horario, límites, cancelación...) se configuran desde el panel: BookingRulesService
     private static final String TIPO_EQUIPO = "EQUIPO_TECNOLOGICO";
-    public static final int DIAS_ANTICIPACION = 30;
-    public static final Duration LIMITE_CANCELACION = Duration.ofHours(1);
 
     private static final DateTimeFormatter FECHA = DateTimeFormatter.ofPattern("d MMM", Locale.of("es"));
 
+    private final BookingRulesService bookingRulesService;
     private final ReservationRepository reservationRepository;
     private final SpaceRepository spaceRepository;
     private final UserRepository userRepository;
@@ -102,19 +95,21 @@ public class ReservationService {
         LocalTime inicio = request.getHoraInicio();
         LocalTime fin = request.getHoraFin();
         LocalDateTime ahora = LocalDateTime.now();
+        BookingRules reglas = bookingRulesService.get();
 
-        validarHorario(inicio, fin);
+        validarHorario(inicio, fin, reglas);
         if (!LocalDateTime.of(fecha, inicio).isAfter(ahora)) {
             throw ApiException.badRequest("No puedes reservar en una fecha u hora que ya pasó.");
         }
-        if (fecha.isAfter(LocalDate.now().plusDays(DIAS_ANTICIPACION))) {
-            throw ApiException.badRequest("Solo puedes reservar con hasta " + DIAS_ANTICIPACION + " días de anticipación.");
+        if (fecha.isAfter(LocalDate.now().plusDays(reglas.getDiasAnticipacion()))) {
+            throw ApiException.badRequest("Solo puedes reservar con hasta " + reglas.getDiasAnticipacion() + " días de anticipación.");
         }
 
         List<Reservation> mias = reservationRepository.findByUsuarioId(usuario.getId());
         long activas = mias.stream().filter(r -> vigente(r, ahora)).count();
-        if (activas >= MAX_ACTIVAS) {
-            throw ApiException.badRequest("Ya tienes " + MAX_ACTIVAS + " reservas activas. Cancela o termina una antes de crear otra.");
+        if (activas >= reglas.getMaxReservasActivas()) {
+            throw ApiException.badRequest("Ya tienes " + reglas.getMaxReservasActivas()
+                    + " reservas activas. Cancela o termina una antes de crear otra.");
         }
         boolean esEquipo = TIPO_EQUIPO.equalsIgnoreCase(espacio.getTipo());
         long delMismoTipoEseDia = mias.stream()
@@ -123,10 +118,13 @@ public class ReservationService {
                         && r.getEstado() != ReservationStatus.RECHAZADA
                         && TIPO_EQUIPO.equalsIgnoreCase(r.getEspacio().getTipo()) == esEquipo)
                 .count();
-        if (delMismoTipoEseDia >= (esEquipo ? MAX_EQUIPOS_DIA : MAX_SALAS_DIA)) {
-            throw ApiException.badRequest(esEquipo
-                    ? "Solo puedes reservar " + MAX_EQUIPOS_DIA + " equipo tecnológico por día."
-                    : "Solo puedes reservar " + MAX_SALAS_DIA + " salas o talleres por día.");
+        int limiteDia = esEquipo ? reglas.getMaxEquiposDia() : reglas.getMaxSalasDia();
+        if (delMismoTipoEseDia >= limiteDia) {
+            throw ApiException.badRequest(limiteDia == 0
+                    ? (esEquipo ? "Por ahora no se pueden reservar equipos tecnológicos." : "Por ahora no se pueden reservar salas ni talleres.")
+                    : esEquipo
+                    ? "Solo puedes reservar " + limiteDia + (limiteDia == 1 ? " equipo tecnológico" : " equipos tecnológicos") + " por día."
+                    : "Solo puedes reservar " + limiteDia + (limiteDia == 1 ? " sala o taller" : " salas o talleres") + " por día.");
         }
         boolean choqueMio = mias.stream().anyMatch(r -> r.getEstado().ocupaHorario() && r.getFecha().equals(fecha)
                 && seSolapan(r.getHoraInicio(), r.getHoraFin(), inicio, fin));
@@ -165,8 +163,12 @@ public class ReservationService {
         if (reserva.getEstado() != ReservationStatus.CONFIRMADA && reserva.getEstado() != ReservationStatus.PENDIENTE) {
             throw ApiException.badRequest("Solo puedes cancelar reservas confirmadas o pendientes.");
         }
-        if (LocalDateTime.now().isAfter(reserva.inicio().minus(LIMITE_CANCELACION))) {
-            throw ApiException.badRequest("Solo puedes cancelar hasta 1 hora antes del inicio de la reserva.");
+        int horasCancelacion = bookingRulesService.get().getHorasCancelacion();
+        if (LocalDateTime.now().isAfter(reserva.inicio().minusHours(horasCancelacion))) {
+            throw ApiException.badRequest(horasCancelacion == 0
+                    ? "La reserva ya empezó: no se puede cancelar."
+                    : "Solo puedes cancelar hasta " + horasCancelacion + (horasCancelacion == 1 ? " hora" : " horas")
+                    + " antes del inicio de la reserva.");
         }
         reserva.setEstado(ReservationStatus.CANCELADA);
         notificationService.notify(reserva.getUsuario(), "CANCELACION",
@@ -187,12 +189,14 @@ public class ReservationService {
         if (!reserva.fin().isAfter(LocalDateTime.now())) {
             throw ApiException.badRequest("Esta reserva ya terminó.");
         }
+        BookingRules reglas = bookingRulesService.get();
+        LocalTime cierre = LocalTime.of(reglas.getHoraCierre(), 0);
         LocalTime nuevoFin = reserva.getHoraFin().plusHours(1);
-        if (nuevoFin.isAfter(CIERRE) || nuevoFin.isBefore(reserva.getHoraFin())) {
-            throw ApiException.badRequest("No se puede extender más allá de las 20:00.");
+        if (nuevoFin.isAfter(cierre) || nuevoFin.isBefore(reserva.getHoraFin())) {
+            throw ApiException.badRequest("No se puede extender más allá de las " + hora(reglas.getHoraCierre()) + ".");
         }
-        if (Duration.between(reserva.getHoraInicio(), nuevoFin).toHours() > MAX_HORAS) {
-            throw ApiException.badRequest("Una reserva no puede durar más de " + MAX_HORAS + " horas.");
+        if (Duration.between(reserva.getHoraInicio(), nuevoFin).toHours() > reglas.getMaxHorasReserva()) {
+            throw ApiException.badRequest("Una reserva no puede durar más de " + reglas.getMaxHorasReserva() + " horas.");
         }
         if (hayChoque(reserva.getEspacio().getId(), reserva.getFecha(), reserva.getHoraFin(), nuevoFin, reserva.getId())) {
             throw ApiException.conflict("El espacio ya está reservado justo después de tu horario.");
@@ -318,16 +322,21 @@ public class ReservationService {
     // Utilidades
     // ---------------------------------------------------------------------
 
-    private void validarHorario(LocalTime inicio, LocalTime fin) {
+    private void validarHorario(LocalTime inicio, LocalTime fin, BookingRules reglas) {
         if (!fin.isAfter(inicio)) {
             throw ApiException.badRequest("La hora de fin debe ser posterior a la hora de inicio.");
         }
-        if (inicio.isBefore(APERTURA) || fin.isAfter(CIERRE)) {
-            throw ApiException.badRequest("El horario de reservas es de 08:00 a 20:00.");
+        if (inicio.isBefore(LocalTime.of(reglas.getHoraApertura(), 0)) || fin.isAfter(LocalTime.of(reglas.getHoraCierre(), 0))) {
+            throw ApiException.badRequest("El horario de reservas es de " + hora(reglas.getHoraApertura())
+                    + " a " + hora(reglas.getHoraCierre()) + ".");
         }
-        if (Duration.between(inicio, fin).toMinutes() > MAX_HORAS * 60L) {
-            throw ApiException.badRequest("Una reserva no puede durar más de " + MAX_HORAS + " horas.");
+        if (Duration.between(inicio, fin).toMinutes() > reglas.getMaxHorasReserva() * 60L) {
+            throw ApiException.badRequest("Una reserva no puede durar más de " + reglas.getMaxHorasReserva() + " horas.");
         }
+    }
+
+    private static String hora(int h) {
+        return String.format("%02d:00", h);
     }
 
     private boolean hayChoque(Long espacioId, LocalDate fecha, LocalTime inicio, LocalTime fin, Long excluirId) {

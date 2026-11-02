@@ -2,6 +2,14 @@
 
 Cambios del backend de Espacia, del más reciente al más antiguo. Cada entrada explica qué cambió y cómo está hecho.
 
+## 1.6.0 — Reglas de reserva configurables
+
+- **Las reglas ya no están fijas en el código.** Nueva entidad `BookingRules` (tabla `booking_rules`, una sola fila) con horario de apertura y cierre, duración máxima, reservas activas, límites diarios de equipos y de salas, horas para cancelar, minutos para liberar una no asistida y días de anticipación. Una instalación nueva arranca con los valores de siempre (8 a 20 h, 4 horas, 3 activas, 1 equipo y 2 salas por día, 1 hora, 30 minutos, 30 días).
+- **`BookingRulesService`** las guarda en la base de datos y las mantiene en memoria, porque se consultan en cada reserva. Al cambiarlas se aplican de inmediato, sin reiniciar. Valida que tengan sentido: el cierre después de la apertura, la duración máxima dentro del horario y al menos un tipo de espacio reservable.
+- **API:** `GET /api/v1/rules` es público (la pantalla de inicio y los Términos de uso muestran las reglas vigentes) y `PUT /api/v1/rules` es solo para administradores. Se guarda quién y cuándo las cambió (`actualizadoPor` no se publica).
+- `ReservationService`, `NoShowService` y el dashboard usan las reglas vigentes. Los mensajes de error muestran los valores reales, por ejemplo "El horario de reservas es de 07:00 a 22:00". La propiedad `app.no-show-minutes` deja de usarse.
+- Pruebas nuevas en `RulesApiTests`: reglas públicas, cambio aplicado de inmediato, reglas incoherentes rechazadas y permiso solo para administradores.
+
 ## 1.5.0 — Autorización de tratamiento de datos
 
 - **El registro exige autorizar el tratamiento de datos personales** (Ley 1581 de 2012). `RegisterRequest` tiene el campo obligatorio `aceptaPrivacidad` (`@AssertTrue`); sin él la API responde 400 y no crea la cuenta.

@@ -5,6 +5,7 @@ import com.bibliospace.backend.dtos.response.DashboardResponse.DayCount;
 import com.bibliospace.backend.dtos.response.DashboardResponse.HourCount;
 import com.bibliospace.backend.dtos.response.DashboardResponse.SpaceCount;
 import com.bibliospace.backend.entities.IncidentStatus;
+import com.bibliospace.backend.entities.BookingRules;
 import com.bibliospace.backend.entities.Reservation;
 import com.bibliospace.backend.entities.ReservationStatus;
 import com.bibliospace.backend.entities.Space;
@@ -33,6 +34,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class DashboardService {
 
+    private final BookingRulesService bookingRulesService;
+
     private static final Locale ES = Locale.of("es");
 
     private final ReservationRepository reservationRepository;
@@ -57,13 +60,15 @@ public class DashboardService {
                 .filter(r -> r.getEstado() == ReservationStatus.CANCELADA || r.getEstado() == ReservationStatus.RECHAZADA)
                 .count();
 
-        // Horas reservadas hoy sobre las horas disponibles (espacios activos x 12 h de apertura)
+        // Horas reservadas hoy sobre las horas disponibles (espacios activos x horas de apertura)
+        BookingRules reglas = bookingRulesService.get();
+        int horasAbierto = reglas.getHoraCierre() - reglas.getHoraApertura();
         long minutosHoy = recientes.stream()
                 .filter(r -> r.getFecha().equals(hoy) && r.getEstado().cuentaComoUso())
                 .mapToLong(r -> Duration.between(r.getHoraInicio(), r.getHoraFin()).toMinutes())
                 .sum();
         int utilizacionHoy = espaciosActivos == 0 ? 0
-                : (int) Math.min(100, Math.round(minutosHoy * 100.0 / (espaciosActivos * 12 * 60)));
+                : (int) Math.min(100, Math.round(minutosHoy * 100.0 / (espaciosActivos * horasAbierto * 60L)));
 
         List<DayCount> porDia = new ArrayList<>();
         for (int i = 6; i >= 0; i--) {
@@ -77,7 +82,7 @@ public class DashboardService {
                 .filter(r -> !r.getFecha().isAfter(hoy) && r.getEstado().cuentaComoUso())
                 .toList();
         List<HourCount> porHora = new ArrayList<>();
-        for (int h = 8; h < 20; h++) {
+        for (int h = reglas.getHoraApertura(); h < reglas.getHoraCierre(); h++) {
             LocalTime desde = LocalTime.of(h, 0);
             LocalTime hasta = desde.plusHours(1);
             long n = ultimoMes.stream()
