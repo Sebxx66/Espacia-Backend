@@ -56,6 +56,46 @@ Para enviarlos de verdad define `MAIL_USERNAME` y `MAIL_PASSWORD`. Con Gmail usa
 [contraseña de aplicación](https://support.google.com/accounts/answer/185833), no la contraseña normal de la cuenta.
 Para un uso real conviene un proveedor transaccional (Brevo, Resend, Amazon SES) con tu propio dominio.
 
+## Copias de seguridad
+
+Los scripts de `scripts/respaldo/` guardan toda la base en un archivo comprimido con la fecha en el nombre
+(`espacia-2026-11-02_030000.dump`), comprueban que se puede leer, lo anotan en `respaldos.log` y borran los
+de más de 14 días. Nunca sobrescriben un respaldo y solo borran los viejos después de uno correcto.
+
+**Con docker compose** el servicio `respaldo` lo hace solo: al arrancar (si aún no hay uno de hoy) y todos
+los días a las 03:00. Los archivos quedan en `./respaldos`. Se ajusta con `BACKUP_TIME`, `BACKUP_KEEP_DAYS`
+y `APP_TIME_ZONE`.
+
+**En Linux o macOS** (necesita `pg_dump` de la misma versión de PostgreSQL o más nueva):
+
+```bash
+sh scripts/respaldo/respaldar.sh                                  # respaldo ahora
+sh scripts/respaldo/restaurar.sh respaldos/ARCHIVO.dump prueba    # cargarlo en una base nueva para revisarlo
+sh scripts/respaldo/restaurar.sh respaldos/ARCHIVO.dump --si      # reemplazar la base de Espacia
+```
+
+**En Windows** (PowerShell 5.1 o más nuevo; `-PgBin` es la carpeta `bin` de PostgreSQL si no está en el PATH):
+
+```bat
+scripts\respaldo\respaldar.bat -PgBin C:\ruta\pgsql\bin
+scripts\respaldo\programar-respaldo.bat -Hora 13:00 -PgBin C:\ruta\pgsql\bin
+scripts\respaldo\restaurar.bat -Archivo respaldos\ARCHIVO.dump -BaseNueva prueba
+scripts\respaldo\restaurar.bat -Archivo respaldos\ARCHIVO.dump -Reemplazar
+```
+
+`programar-respaldo` crea una tarea en el Programador de tareas de Windows para el usuario actual (sin
+permisos de administrador). Si el equipo estaba apagado a esa hora, respalda en cuanto se enciende, y
+nunca hace más de un respaldo por día.
+
+Antes de reemplazar la base, `restaurar` hace un respaldo del estado actual y restaura todo en una sola
+transacción: si algo falla, la base queda como estaba. Detén el backend antes de reemplazarla.
+
+La contraseña de la base se toma de `DB_PASSWORD` o `PGPASSWORD`. Para una tarea programada sin variables,
+usa el archivo de contraseñas de PostgreSQL (`%APPDATA%\postgresql\pgpass.conf` en Windows, `~/.pgpass` en Linux).
+
+> Guarda una copia fuera del equipo: si los respaldos quedan en el mismo disco que la base, se pierden juntos.
+> Lo más simple es apuntar la carpeta de respaldos a OneDrive, Google Drive o un disco externo.
+
 ## Documentación de la API
 
 Con el backend encendido, abre `http://localhost:8080/swagger-ui.html`: lista todas las rutas y permite probarlas desde el navegador.
@@ -89,6 +129,7 @@ Todo se configura con variables de entorno; los valores por defecto coinciden co
 | `MAIL_HOST`, `MAIL_PORT`, `MAIL_FROM_NAME` | `smtp.gmail.com`, `587`, `Espacia` | Servidor SMTP y nombre del remitente |
 | `VERIFY_TOKEN_HOURS` | `24` | Horas que dura el enlace para confirmar el correo al registrarse |
 | `UNVERIFIED_ACCOUNT_DAYS` | `7` | Días tras los que se borran las cuentas que nunca confirmaron su correo |
+| `BACKUP_TIME`, `BACKUP_KEEP_DAYS` | `03:00`, `14` | Hora del respaldo diario de docker compose y días que se conservan |
 | `REMINDER_MINUTES` | `60` | Minutos antes del inicio en que se envía el recordatorio |
 | `APP_TIME_ZONE` | `America/Bogota` | Zona horaria de la biblioteca. Las reglas de horario la usan aunque el servidor esté en otra zona |
 | `API_DOCS` | `true` | Muestra la documentación de la API en `/swagger-ui.html` |

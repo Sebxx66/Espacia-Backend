@@ -2,6 +2,15 @@
 
 Cambios del backend de Espacia, del más reciente al más antiguo. Cada entrada explica qué cambió y cómo está hecho.
 
+## 1.8.0 — Copias de seguridad automáticas
+
+- **Scripts de respaldo** en `scripts/respaldo/`, para Linux y macOS (`respaldar.sh`, `restaurar.sh`, en `sh` estándar para que también corran en Alpine) y para Windows (`respaldar.ps1`, `restaurar.ps1`, `programar-respaldo.ps1`, con sus `.bat`).
+- **Cómo respaldan.** `pg_dump` en formato personalizado y comprimido, con la fecha y la hora en el nombre. Escriben primero en un archivo `.parcial`, comprueban que se puede leer con `pg_restore --list` y solo entonces le dan el nombre definitivo; si falla, no queda un respaldo a medias. Nunca sobrescriben uno existente (si dos coinciden en el mismo segundo, el segundo se numera). Anotan cada resultado en `respaldos.log`. Después de un respaldo correcto borran los de más de `BACKUP_KEEP_DAYS` días (14 por defecto), así que siempre queda al menos el de hoy. Con `--uno-por-dia` (`-UnoPorDia` en Windows) no hacen nada si ya hay uno de hoy, para ejecutarlos al iniciar.
+- **Restauración segura.** `restaurar` carga un respaldo en una base nueva para revisarlo, o reemplaza la base de Espacia. Antes de reemplazarla respalda el estado actual y lo hace en una sola transacción (`--single-transaction`): si algo falla, la base queda como estaba. En Windows pide escribir RESTAURAR para confirmar.
+- **docker compose.** Nuevo servicio `respaldo` (misma imagen `postgres:17-alpine`) que respalda al arrancar y todos los días a `BACKUP_TIME` (03:00 por defecto, en la zona `APP_TIME_ZONE`). Los archivos quedan en `./respaldos`, que está en `.gitignore`.
+- **Windows.** `programar-respaldo` registra una tarea diaria en el Programador de tareas para el usuario actual, sin permisos de administrador. Si el equipo estaba apagado a esa hora, respalda en cuanto se enciende. Los `.ps1` se guardan con BOM UTF-8 para que Windows PowerShell 5.1 muestre bien las tildes.
+- **Probados en la integración continua** contra PostgreSQL 17 real, en Linux (dentro de la imagen Alpine) y en Windows (PowerShell 5.1). `probar.sh` y `probar.ps1` cubren respaldo, un solo respaldo por día, restauración en una base nueva y completa, retención, respaldo previo a restaurar y, en Windows, que un error quede en el log.
+
 ## 1.7.0 — Verificación del correo al registrarse
 
 - **Las cuentas nuevas confirman su correo con un enlace.** `POST /auth/register` ya no inicia sesión: crea la cuenta con `emailVerificado = false` y envía un correo con un enlace de un solo uso que vence en 24 horas (`VERIFY_TOKEN_HOURS`). Solo se guarda el hash SHA-256 del enlace. Mientras no se confirme, `POST /auth/login` con la contraseña correcta responde 403 con `"code": "EMAIL_NO_VERIFICADO"`, para que el frontend ofrezca reenviar el enlace; con la contraseña incorrecta sigue respondiendo 401, así no se revela si la cuenta existe.

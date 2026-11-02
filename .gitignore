@@ -38,3 +38,6 @@ correo-config.bat
 .env
 .env.*
 !.env.example
+
+### Copias de seguridad de la base de datos ###
+respaldos/

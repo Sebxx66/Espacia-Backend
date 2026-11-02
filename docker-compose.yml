@@ -1,6 +1,7 @@
-# Base de datos PostgreSQL para desarrollo local.
+# Base de datos PostgreSQL y su respaldo diario.
 # Arranca con:  docker compose up -d
 # Los datos se guardan en el volumen "bibliospace-data" y sobreviven a reinicios.
+# Los respaldos quedan en la carpeta ./respaldos (ver "Copias de seguridad" en el README).
 services:
   db:
     image: postgres:17-alpine
@@ -19,6 +20,29 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+
+  # Respalda la base al arrancar (si aún no hay uno de hoy) y luego todos los días a BACKUP_TIME.
+  # Conserva los de los últimos BACKUP_KEEP_DAYS días.
+  respaldo:
+    image: postgres:17-alpine
+    container_name: bibliospace-respaldo
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_NAME: bibliospace_db
+      DB_USERNAME: postgres
+      DB_PASSWORD: ${DB_PASSWORD:-bibliospace}
+      BACKUP_DIR: /respaldos
+      BACKUP_TIME: ${BACKUP_TIME:-03:00}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+      TZ: ${APP_TIME_ZONE:-America/Bogota}
+    volumes:
+      - ./scripts/respaldo:/scripts:ro
+      - ./respaldos:/respaldos
+    entrypoint: ["sh", "/scripts/respaldo-diario.sh"]
 
 volumes:
   bibliospace-data:

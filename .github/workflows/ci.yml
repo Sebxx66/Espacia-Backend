@@ -23,3 +23,41 @@ jobs:
         run: |
           chmod +x mvnw
           ./mvnw -B test
+
+  # Respaldos en Linux y en el contenedor de docker-compose: los scripts corren dentro de la misma
+  # imagen postgres:17-alpine que usa el servicio de respaldo, contra un PostgreSQL 17 real
+  respaldos-linux:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: bibliospace_db
+          POSTGRES_PASSWORD: bibliospace
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 3s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probar respaldar.sh y restaurar.sh
+        run: |
+          docker run --rm --network host -e DB_PASSWORD=bibliospace -e BACKUP_DIR=/tmp/respaldos \
+            -v "$PWD/scripts/respaldo:/scripts:ro" postgres:17-alpine sh /scripts/probar.sh
+
+  # Respaldos en Windows (la instalación local de Espacia): PowerShell 5.1 con el PostgreSQL del equipo de GitHub
+  respaldos-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Encender PostgreSQL
+        shell: pwsh
+        run: |
+          $svc = Get-Service -Name "postgresql*" | Select-Object -First 1
+          Set-Service -Name $svc.Name -StartupType Manual
+          Start-Service -Name $svc.Name
+          & "$env:PGBIN\createdb.exe" -h localhost -U postgres -w bibliospace_db
+      - name: Probar respaldar.ps1 y restaurar.ps1
+        shell: powershell
+        run: |
+          & .\scripts\respaldo\probar.ps1
+          exit $LASTEXITCODE
