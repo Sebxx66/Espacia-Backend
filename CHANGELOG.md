@@ -2,6 +2,13 @@
 
 Cambios del backend de Espacia, del más reciente al más antiguo. Cada entrada explica qué cambió y cómo está hecho.
 
+## 1.10.0 — Listo para desplegar en Render
+
+- **Correo por API HTTPS.** Los planes gratis de Render y Railway (y el Hobby de Railway) bloquean el envío por SMTP, así que ningún correo salía. `EmailService` ahora puede enviar por la API de **Brevo** o **Resend** (`MAIL_PROVIDER=brevo` o `resend`, con `MAIL_API_KEY` y `MAIL_FROM`), que usa el puerto 443 como cualquier página web. Con `MAIL_PROVIDER=smtp`, el valor por defecto, todo sigue igual que antes (Gmail en el PC). El cuerpo se arma como JSON con el cliente HTTP de Java, sin dependencias nuevas; un error del proveedor queda en el log con su código y nunca rompe una reserva.
+- **`Dockerfile`.** Compila con Maven en una etapa y deja solo el entorno de ejecución de Java 25 en la imagen final, con un usuario sin privilegios, memoria ajustada a 512 MB (`MaxRAMPercentage`, `SerialGC`) y el puerto de la variable `PORT` que asignan Render y Railway. `.dockerignore` deja fuera compilados, respaldos y logs.
+- **README:** sección "Despliegue con Docker" con las variables para Render.
+- **Pruebas:** `EmailApiProviderTests` comprueba contra un servidor HTTP local qué se envía a Brevo y a Resend (remitente, destino, clave y asunto). La integración continua construye la imagen de Docker y comprueba que arranca y responde con un PostgreSQL real.
+
 ## 1.9.0 — Contraseñas más seguras
 
 - **Las contraseñas nuevas no pueden ser fáciles de adivinar.** `PasswordPolicy` revisa cada contraseña que se crea: en el registro, al cambiarla, al recuperarla y las que asigna el administrador. Se rechaza si está en la lista de contraseñas comunes (`seguridad/contrasenas-comunes.txt`: las de 8 caracteres o más entre las 10.000 más usadas de SecLists, licencia MIT, más algunas en español y del dominio de la app), si es una palabra predecible seguida solo de números o símbolos ("Espacia2026!", "Contraseña123"), si es una secuencia de teclado, letras o números ("qwertyuiop", "87654321"), si repite uno o dos caracteres, o si contiene el nombre o la parte del correo antes de la @. La comparación ignora mayúsculas y tildes.

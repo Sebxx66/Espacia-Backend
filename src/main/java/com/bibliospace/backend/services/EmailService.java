@@ -9,10 +9,23 @@ import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.util.HtmlUtils;
+import tools.jackson.databind.json.JsonMapper;
 
-// Envío de correos por SMTP (Gmail por defecto). Si no hay MAIL_USERNAME configurado, el envío
-// queda desactivado: la app funciona igual y solo escribe en el log lo que habría enviado.
-// Todos los métodos públicos son asíncronos para no retrasar la respuesta al usuario.
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+
+// Envío de correos. Dos formas, según MAIL_PROVIDER:
+//   smtp (por defecto): por SMTP, Gmail por defecto, con MAIL_USERNAME y MAIL_PASSWORD.
+//   brevo o resend: por la API HTTPS del servicio, con MAIL_API_KEY y MAIL_FROM. Sirve en servidores
+//   que bloquean SMTP, como los planes gratis de Render y Railway.
+// Sin la configuración necesaria el envío queda desactivado: la app funciona igual y solo escribe
+// en el log lo que habría enviado. Todos los métodos públicos son asíncronos para no retrasar la respuesta.
 @Service
 @Slf4j
 public class EmailService {
@@ -21,19 +34,51 @@ public class EmailService {
     private final String username;
     private final String fromName;
     private final String frontendUrl;
+    private final String provider;
+    private final String apiKey;
+    private final String from;
+    private final String apiUrl;
+
+    private static final HttpClient HTTP = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
+    private static final JsonMapper JSON = JsonMapper.builder().build();
 
     public EmailService(ObjectProvider<JavaMailSender> mailSenderProvider,
                         @Value("${spring.mail.username:}") String username,
                         @Value("${app.mail.from-name:Espacia}") String fromName,
-                        @Value("${app.frontend-url:http://localhost:8443}") String frontendUrl) {
+                        @Value("${app.frontend-url:http://localhost:8443}") String frontendUrl,
+                        @Value("${app.mail.provider:smtp}") String provider,
+                        @Value("${app.mail.api-key:}") String apiKey,
+                        @Value("${app.mail.from:}") String from,
+                        @Value("${app.mail.api-url:}") String apiUrl) {
         this.mailSender = mailSenderProvider.getIfAvailable();
         this.username = username == null ? "" : username.trim();
         this.fromName = fromName;
         this.frontendUrl = frontendUrl == null ? "" : frontendUrl.replaceAll("/+$", "");
+        this.provider = provider == null ? "smtp" : provider.trim().toLowerCase(Locale.ROOT);
+        this.apiKey = apiKey == null ? "" : apiKey.trim();
+        // Remitente: MAIL_FROM, o la cuenta SMTP si no se definió
+        this.from = from == null || from.isBlank() ? this.username : from.trim();
+        // Dirección de la API: configurable solo para pruebas
+        this.apiUrl = apiUrl != null && !apiUrl.isBlank() ? apiUrl.trim()
+                : switch (this.provider) {
+                    case "brevo" -> "https://api.brevo.com/v3/smtp/email";
+                    case "resend" -> "https://api.resend.com/emails";
+                    default -> "";
+                };
+        if (!this.provider.equals("smtp") && this.apiUrl.isEmpty()) {
+            log.warn("MAIL_PROVIDER={} no es válido (usa smtp, brevo o resend): el correo queda desactivado", provider);
+        }
+    }
+
+    private boolean porApi() {
+        return provider.equals("brevo") || provider.equals("resend");
     }
 
     public boolean enabled() {
-        return mailSender != null && !username.isBlank();
+        if (porApi()) {
+            return !apiKey.isBlank() && !from.isBlank();
+        }
+        return provider.equals("smtp") && mailSender != null && !username.isBlank();
     }
 
     @Async
@@ -111,6 +156,10 @@ public class EmailService {
             log.info("[correo desactivado] Para: {} | Asunto: {}", to, subject);
             return;
         }
+        if (porApi()) {
+            enviarPorApi(to, subject, html);
+            return;
+        }
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, "UTF-8");
@@ -123,6 +172,48 @@ public class EmailService {
         } catch (Exception e) {
             // Un fallo de correo nunca debe romper el registro ni las reservas
             log.error("No se pudo enviar el correo a {}: {}", to, e.getMessage());
+        }
+    }
+
+    // Brevo y Resend reciben el correo como JSON por HTTPS (puerto 443, que los servidores no bloquean)
+    private void enviarPorApi(String to, String subject, String html) {
+        try {
+            Map<String, Object> cuerpo;
+            HttpRequest.Builder req = HttpRequest.newBuilder(URI.create(apiUrl))
+                    .timeout(Duration.ofSeconds(20))
+                    .header("Content-Type", "application/json")
+                    .header("Accept", "application/json");
+            if (provider.equals("brevo")) {
+                cuerpo = Map.of(
+                        "sender", Map.of("name", fromName, "email", from),
+                        "to", List.of(Map.of("email", to)),
+                        "subject", subject,
+                        "htmlContent", html);
+                req.header("api-key", apiKey);
+            } else {
+                cuerpo = Map.of(
+                        "from", fromName + " <" + from + ">",
+                        "to", List.of(to),
+                        "subject", subject,
+                        "html", html);
+                req.header("Authorization", "Bearer " + apiKey);
+            }
+            HttpResponse<String> res = HTTP.send(
+                    req.POST(HttpRequest.BodyPublishers.ofString(JSON.writeValueAsString(cuerpo))).build(),
+                    HttpResponse.BodyHandlers.ofString());
+            if (res.statusCode() / 100 == 2) {
+                log.info("Correo enviado a {} ({}) por {}", to, subject, provider);
+            } else {
+                String detalle = res.body() == null ? "" : res.body();
+                log.error("No se pudo enviar el correo a {} por {}: HTTP {} {}", to, provider, res.statusCode(),
+                        detalle.length() > 300 ? detalle.substring(0, 300) : detalle);
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.error("Envío de correo interrumpido para {}", to);
+        } catch (Exception e) {
+            // Un fallo de correo nunca debe romper el registro ni las reservas
+            log.error("No se pudo enviar el correo a {} por {}: {}", to, provider, e.getMessage());
         }
     }
 

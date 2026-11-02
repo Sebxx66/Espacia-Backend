@@ -96,6 +96,26 @@ usa el archivo de contraseñas de PostgreSQL (`%APPDATA%\postgresql\pgpass.conf`
 > Guarda una copia fuera del equipo: si los respaldos quedan en el mismo disco que la base, se pierden juntos.
 > Lo más simple es apuntar la carpeta de respaldos a OneDrive, Google Drive o un disco externo.
 
+## Despliegue con Docker (Render, Railway u otro servidor)
+
+El `Dockerfile` compila el backend y crea una imagen con Java 25 lista para producción: usuario sin privilegios,
+memoria ajustada a servidores pequeños (512 MB) y el puerto que indique la variable `PORT` (8080 por defecto).
+
+En **Render**: *New → Web Service* con este repositorio (Render detecta el `Dockerfile`), una base *Postgres* en la
+misma región y estas variables como mínimo:
+
+| Variable | Valor |
+|---|---|
+| `DB_URL` | `jdbc:postgresql://HOST:5432/BASE` (datos de la base de Render) |
+| `DB_USERNAME`, `DB_PASSWORD` | Usuario y clave de la base |
+| `JWT_SECRET` | Generada (botón *Generate*) |
+| `ADMIN_NOMBRE`, `ADMIN_EMAIL`, `ADMIN_PASSWORD` | Administrador inicial |
+| `SEED_DEMO_DATA` | `false` |
+| `FRONTEND_URL`, `CORS_ALLOWED_ORIGINS` | Dirección pública del frontend |
+| `MAIL_PROVIDER`, `MAIL_API_KEY`, `MAIL_FROM` | `brevo` o `resend`, su clave y el remitente verificado |
+
+*Health Check Path*: `/api/v1/rules`. Los planes gratis de Render y Railway bloquean SMTP, por eso el correo va por API.
+
 ## Documentación de la API
 
 Con el backend encendido, abre `http://localhost:8080/swagger-ui.html`: lista todas las rutas y permite probarlas desde el navegador.
@@ -126,6 +146,8 @@ Todo se configura con variables de entorno; los valores por defecto coinciden co
 | `SEED_DEMO_DATA` | `true` | Crear datos de demostración |
 | `SEED_DEMO_PASSWORD` | valor de desarrollo | Contraseña de las cuentas de demostración |
 | `MAIL_USERNAME`, `MAIL_PASSWORD` | vacío | Cuenta SMTP. Sin ellas el envío queda desactivado |
+| `MAIL_PROVIDER` | `smtp` | `smtp`, `brevo` o `resend`. Con `brevo` o `resend` los correos salen por la API HTTPS del servicio, necesario en servidores que bloquean SMTP (planes gratis de Render y Railway) |
+| `MAIL_API_KEY`, `MAIL_FROM` | vacío | Clave de la API de Brevo o Resend y correo remitente verificado en ese servicio |
 | `MAIL_HOST`, `MAIL_PORT`, `MAIL_FROM_NAME` | `smtp.gmail.com`, `587`, `Espacia` | Servidor SMTP y nombre del remitente |
 | `VERIFY_TOKEN_HOURS` | `24` | Horas que dura el enlace para confirmar el correo al registrarse |
 | `UNVERIFIED_ACCOUNT_DAYS` | `7` | Días tras los que se borran las cuentas que nunca confirmaron su correo |
