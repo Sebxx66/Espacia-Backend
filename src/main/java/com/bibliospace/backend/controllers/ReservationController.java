@@ -68,10 +68,17 @@ public class ReservationController {
         return ResponseEntity.ok(reservationService.finish(id));
     }
 
-    // Anula una reserva (por ejemplo, si el usuario no se presentó)
+    // Anula una reserva que todavía no se usará
     @PatchMapping("/{id}/reject")
     @PreAuthorize(PERSONAL)
     public ResponseEntity<ReservationResponse> reject(@PathVariable Long id) {
         return ResponseEntity.ok(reservationService.reject(id));
+    }
+
+    // Marca que el usuario no se presentó (solo cuando la reserva ya empezó)
+    @PatchMapping("/{id}/no-show")
+    @PreAuthorize(PERSONAL)
+    public ResponseEntity<ReservationResponse> noShow(@PathVariable Long id) {
+        return ResponseEntity.ok(reservationService.noShow(id));
     }
 }

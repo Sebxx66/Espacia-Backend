@@ -2,6 +2,16 @@
 
 Cambios del backend de Espacia, del más reciente al más antiguo. Cada entrada explica qué cambió y cómo está hecho.
 
+## 1.4.0 — No asistidas, zona horaria y documentación de la API
+
+- **Reservas no asistidas.** Nuevo estado `NO_ASISTIDA`. `NoShowService` revisa cada minuto las reservas de hoy confirmadas y, si nadie validó la llegada a los `NO_SHOW_MINUTES` (30 por defecto) del inicio, las marca como no asistidas: el horario queda libre y el usuario recibe una notificación y un correo. El personal también puede marcarlo a mano con `PATCH /reservations/{id}/no-show`, solo cuando la reserva ya empezó; antes de esa hora se usa "anular". Las no asistidas siguen contando para el límite diario, para que no se pueda reservar y faltar sin consecuencia.
+- **Estado nuevo en bases existentes.** Hibernate crea en PostgreSQL una restricción `CHECK` con los estados que existían al crear la tabla, y `ddl-auto=update` no la actualiza. `EstadoReservaConstraint` la reemplaza al arrancar por una con todos los estados actuales (es seguro repetirlo).
+- **Zona horaria fija.** `TimeZoneConfig` fija la zona de la aplicación en `America/Bogota` (configurable con `APP_TIME_ZONE`). Sin esto, en un servidor en la nube (normalmente en UTC) las horas pasadas, los recordatorios y las no asistidas se calcularían con 5 horas de diferencia.
+- **Documentación interactiva de la API.** Con springdoc-openapi, `/swagger-ui.html` muestra todas las rutas y permite probarlas con el token (botón Authorize). Se puede ocultar con `API_DOCS=false`.
+- **Licencia.** Todos los derechos reservados (archivo `LICENSE`).
+- La versión del proyecto pasa a `1.4.0` en `pom.xml`, alineada con este historial.
+- Pruebas nuevas: liberación automática a los 30 minutos, marcado manual solo después del inicio y acceso público a la documentación.
+
 ## 1.3.0 — Sesiones y extensión de reservas
 
 - **Cambiar la contraseña cierra las sesiones abiertas.** `User` guarda `passwordCambiadaEn` cada vez que cambia la contraseña: al cambiarla desde la app, al restablecerla con el enlace del correo o cuando la restablece un administrador. `JwtAuthenticationFilter` compara esa fecha con la hora de emisión del token (`iat`) y deja de aceptar los tokens emitidos antes. Quien cambia su propia contraseña recibe un token nuevo en la respuesta de `PATCH /auth/password`, así que sigue conectado en ese dispositivo y se cierran los demás.

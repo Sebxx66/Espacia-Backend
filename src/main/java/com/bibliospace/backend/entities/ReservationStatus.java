@@ -6,7 +6,9 @@ public enum ReservationStatus {
     RECHAZADA,
     EN_USO,
     FINALIZADA,
-    CANCELADA;
+    CANCELADA,
+    // Nadie validó la llegada a tiempo: el espacio se libera
+    NO_ASISTIDA;
 
     // Estados que bloquean el horario del espacio
     public boolean ocupaHorario() {

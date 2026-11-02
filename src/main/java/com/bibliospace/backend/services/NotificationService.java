@@ -23,7 +23,7 @@ public class NotificationService {
     private final EmailService emailService;
 
     // Estas notificaciones también se envían por correo (las demás solo se ven dentro de la app)
-    private static final Set<String> TIPOS_CON_CORREO = Set.of("CONFIRMACION", "CANCELACION", "RECHAZADA");
+    private static final Set<String> TIPOS_CON_CORREO = Set.of("CONFIRMACION", "CANCELACION", "RECHAZADA", "NO_ASISTIDA");
 
     public void notify(User usuario, String tipo, String mensaje) {
         notificationRepository.save(Notification.builder()

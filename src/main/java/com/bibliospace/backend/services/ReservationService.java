@@ -276,6 +276,27 @@ public class ReservationService {
         return toResponse(reserva);
     }
 
+    // El personal marca que el usuario no llegó: solo cuando la reserva ya empezó
+    @Transactional
+    public ReservationResponse noShow(Long id) {
+        Reservation reserva = find(id);
+        if (reserva.getEstado() != ReservationStatus.CONFIRMADA && reserva.getEstado() != ReservationStatus.PENDIENTE) {
+            throw ApiException.badRequest("Solo se puede marcar como no asistida una reserva confirmada.");
+        }
+        if (reserva.inicio().isAfter(LocalDateTime.now())) {
+            throw ApiException.badRequest("La reserva todavía no empieza. Si no se usará, anúlala.");
+        }
+        marcarNoAsistida(reserva);
+        return toResponse(reserva);
+    }
+
+    public void marcarNoAsistida(Reservation reserva) {
+        reserva.setEstado(ReservationStatus.NO_ASISTIDA);
+        notificationService.notify(reserva.getUsuario(), "NO_ASISTIDA",
+                "Tu reserva " + codigo(reserva) + " en " + descripcion(reserva)
+                        + " se marcó como no asistida porque no se registró tu llegada. El espacio quedó libre para otras personas.");
+    }
+
     // Cuando un espacio pasa a mantenimiento o inactivo, sus reservas futuras se anulan y se avisa a cada usuario
     @Transactional
     public int cancelFutureForSpace(Space espacio, String motivo) {

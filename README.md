@@ -56,6 +56,12 @@ Para enviarlos de verdad define `MAIL_USERNAME` y `MAIL_PASSWORD`. Con Gmail usa
 [contraseña de aplicación](https://support.google.com/accounts/answer/185833), no la contraseña normal de la cuenta.
 Para un uso real conviene un proveedor transaccional (Brevo, Resend, Amazon SES) con tu propio dominio.
 
+## Documentación de la API
+
+Con el backend encendido, abre `http://localhost:8080/swagger-ui.html`: lista todas las rutas y permite probarlas desde el navegador.
+Inicia sesión con `POST /api/v1/auth/login`, copia el `token` de la respuesta y pégalo en **Authorize**.
+En producción puedes ocultarla con `API_DOCS=false`.
+
 ## Pruebas automáticas
 
 ```bash
@@ -82,6 +88,9 @@ Todo se configura con variables de entorno; los valores por defecto coinciden co
 | `MAIL_USERNAME`, `MAIL_PASSWORD` | vacío | Cuenta SMTP. Sin ellas el envío queda desactivado |
 | `MAIL_HOST`, `MAIL_PORT`, `MAIL_FROM_NAME` | `smtp.gmail.com`, `587`, `Espacia` | Servidor SMTP y nombre del remitente |
 | `REMINDER_MINUTES` | `60` | Minutos antes del inicio en que se envía el recordatorio |
+| `NO_SHOW_MINUTES` | `30` | Minutos después del inicio sin validar la llegada para liberar la reserva como no asistida |
+| `APP_TIME_ZONE` | `America/Bogota` | Zona horaria de la biblioteca. Las reglas de horario la usan aunque el servidor esté en otra zona |
+| `API_DOCS` | `true` | Muestra la documentación de la API en `/swagger-ui.html` |
 
 ## Roles
 
@@ -98,7 +107,8 @@ El registro público siempre crea estudiantes. Las cuentas de funcionario y admi
 - Horario de 08:00 a 20:00, máximo 4 horas por reserva.
 - Máximo 3 reservas activas por usuario y hasta 30 días de anticipación.
 - Máximo 1 equipo tecnológico y 2 salas o talleres por usuario y por día.
-- Cancelación hasta 1 hora antes del inicio. Extensión de 1 hora si el espacio está libre.
+- Cancelación hasta 1 hora antes del inicio. Extensión de 1 hora si el espacio y el usuario están libres en esa hora.
+- Si nadie valida la llegada en los primeros 30 minutos, la reserva se marca como **no asistida**, el espacio se libera y el usuario recibe un aviso.
 - No se permiten reservas superpuestas en un mismo espacio.
 - Si un espacio pasa a mantenimiento o inactivo, sus reservas futuras se anulan y se notifica a los usuarios.
 - Las contraseñas deben tener al menos 8 caracteres.
@@ -123,8 +133,12 @@ Todas las rutas empiezan por `/api/v1`. Los errores responden `{"message": "..."
 | `POST /reservations` · `GET /reservations/me` | Autenticado | Crear y listar reservas propias |
 | `PATCH /reservations/{id}/cancel` · `/extend` | Dueño | Cancelar o extender 1 hora |
 | `GET /reservations?estado=&fecha=` | Funcionario, admin | Todas las reservas |
-| `PATCH /reservations/{id}/check-in` · `/finish` · `/reject` | Funcionario, admin | Validar llegada, finalizar o devolver, anular |
+| `PATCH /reservations/{id}/check-in` · `/finish` · `/reject` · `/no-show` | Funcionario, admin | Validar llegada, finalizar o devolver, anular, marcar como no asistida |
 | `GET /notifications/me` · `PATCH /notifications/{id}/read` · `/read-all` | Autenticado | Notificaciones |
 | `GET /users` · `POST /users` · `PATCH /users/{id}` · `PATCH /users/{id}/password` | Admin | Gestión de usuarios |
 | `GET /incidents` · `POST /incidents` · `PATCH /incidents/{id}/resolve` | Funcionario, admin | Soporte técnico |
 | `GET /admin/dashboard` | Admin | Estadísticas |
+
+## Licencia
+
+Copyright © 2026 Sebxx66. Todos los derechos reservados. El código se publica solo para consulta; ver [LICENSE](LICENSE).

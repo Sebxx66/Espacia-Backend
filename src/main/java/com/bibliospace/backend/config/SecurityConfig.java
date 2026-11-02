@@ -43,6 +43,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 // Para que los errores lleguen con su código real (400, 404...) y no como 403
                 .requestMatchers("/error").permitAll()
+                // Documentación de la API (se puede apagar con API_DOCS=false)
+                .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
                 // Todas las demás rutas requieren token (los permisos por rol están en cada controlador)
                 .anyRequest().authenticated()
             )

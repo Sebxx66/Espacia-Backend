@@ -52,6 +52,7 @@ public class EmailService {
             case "CONFIRMACION" -> "Reserva confirmada";
             case "CANCELACION" -> "Reserva cancelada";
             case "RECHAZADA" -> "Reserva anulada";
+            case "NO_ASISTIDA" -> "Reserva no asistida";
             default -> "Novedad en tu reserva";
         };
         deliver(to, asunto + " · Espacia", layout(

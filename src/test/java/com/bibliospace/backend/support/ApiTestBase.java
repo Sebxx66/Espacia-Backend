@@ -53,6 +53,18 @@ public abstract class ApiTestBase {
         }
     }
 
+    // Llama a una ruta fuera de /api/v1 (por ejemplo, la documentación de la API)
+    protected Response getRaw(String absolutePath) {
+        try {
+            HttpRequest req = HttpRequest.newBuilder(URI.create("http://localhost:" + port + absolutePath)).GET().build();
+            HttpResponse<String> res = HTTP.send(req, HttpResponse.BodyHandlers.ofString());
+            JsonNode json = res.body() == null || res.body().isBlank() ? JSON.createObjectNode() : JSON.readTree(res.body());
+            return new Response(res.statusCode(), json);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     protected Response get(String path, String token) {
         return call("GET", path, null, token);
     }
