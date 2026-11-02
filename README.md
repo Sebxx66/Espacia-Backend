@@ -45,19 +45,9 @@ La interfaz completa está en el repositorio del frontend.
 
 Al primer arranque se crean automáticamente:
 
-- **Un administrador** (si no existe ninguno): `admin@bibliospace.local` con contraseña `Admin12345`.
-  Cámbiala desde la aplicación o define `ADMIN_EMAIL` y `ADMIN_PASSWORD` antes de arrancar.
+- **Un administrador** (si no existe ninguno), con el correo y la contraseña de `ADMIN_EMAIL` y `ADMIN_PASSWORD`.
+  Defínelos antes del primer arranque y cambia la contraseña desde la aplicación después de entrar.
 - **Datos de demostración** (desactívalos con `SEED_DEMO_DATA=false`): seis espacios de ejemplo, dos estudiantes, un funcionario, reservas de las últimas semanas, incidencias y notificaciones.
-
-### Cuentas de demostración
-
-| Rol | Correo | Contraseña |
-|---|---|---|
-| Estudiante | `estudiante@bibliospace.local` | `Demo12345` |
-| Funcionario | `funcionario@bibliospace.local` | `Demo12345` |
-| Administrador | `admin@bibliospace.local` | `Admin12345` |
-
-Son solo para desarrollo. En un entorno real desactiva los datos de demostración y cambia las credenciales.
 
 ## Correo electrónico
 
@@ -83,12 +73,12 @@ Todo se configura con variables de entorno; los valores por defecto coinciden co
 | `DB_URL` | `jdbc:postgresql://localhost:5432/bibliospace_db` | Conexión a PostgreSQL |
 | `DB_USERNAME` | `postgres` | Usuario de la base de datos |
 | `DB_PASSWORD` | `bibliospace` | Contraseña de la base de datos (también la usa `docker compose`) |
-| `JWT_SECRET` | valor de desarrollo | Clave para firmar los tokens (mínimo 32 caracteres). **Cámbiala en producción** |
+| `JWT_SECRET` | sin valor | Clave para firmar los tokens (mínimo 32 caracteres). Si no se define, se genera una al azar en cada arranque y las sesiones se cierran al reiniciar. **Defínela siempre en producción** |
 | `CORS_ALLOWED_ORIGINS` | `localhost` y `127.0.0.1` en los puertos 5173 y 8443 | Orígenes del frontend, separados por coma. En desarrollo el frontend reenvía sus llamadas por su propio servidor, así que no hace falta agregar la IP de cada celular |
 | `FRONTEND_URL` | `http://localhost:8443` | Dirección del frontend, usada en los enlaces de los correos |
-| `ADMIN_NOMBRE`, `ADMIN_EMAIL`, `ADMIN_PASSWORD` | ver arriba | Administrador inicial |
+| `ADMIN_NOMBRE`, `ADMIN_EMAIL`, `ADMIN_PASSWORD` | valores de desarrollo | Administrador inicial. **Defínelos en producción** |
 | `SEED_DEMO_DATA` | `true` | Crear datos de demostración |
-| `SEED_DEMO_PASSWORD` | `Demo12345` | Contraseña de las cuentas de demostración |
+| `SEED_DEMO_PASSWORD` | valor de desarrollo | Contraseña de las cuentas de demostración |
 | `MAIL_USERNAME`, `MAIL_PASSWORD` | vacío | Cuenta SMTP. Sin ellas el envío queda desactivado |
 | `MAIL_HOST`, `MAIL_PORT`, `MAIL_FROM_NAME` | `smtp.gmail.com`, `587`, `Espacia` | Servidor SMTP y nombre del remitente |
 | `REMINDER_MINUTES` | `60` | Minutos antes del inicio en que se envía el recordatorio |

@@ -2,6 +2,11 @@
 
 Cambios del backend de Espacia, del más reciente al más antiguo. Cada entrada explica qué cambió y cómo está hecho.
 
+## 1.2.0 — Sin claves en el repositorio
+
+- **La clave de los tokens ya no está en el código.** `jwt.secret` se toma solo de la variable de entorno `JWT_SECRET`. Si no está definida, `JwtTokenProvider` genera al arrancar una clave aleatoria de 512 bits con `SecureRandom` y avisa en el log: sirve para desarrollo, pero las sesiones se cierran al reiniciar el backend. Si `JWT_SECRET` tiene menos de 32 caracteres, el backend no arranca y lo explica. La clave se calcula una sola vez al iniciar, en lugar de en cada token.
+- **El README ya no publica cuentas ni contraseñas de prueba.** Se quitó la tabla de cuentas de demostración y la contraseña del administrador inicial; ahora se indica definir `ADMIN_EMAIL` y `ADMIN_PASSWORD` antes del primer arranque.
+
 ## 1.1.1 — Prueba de horas pasadas
 
 - El backend ya rechazaba reservas cuya hora de inicio ya pasó (`ReservationService.create` compara fecha y hora de inicio con el momento actual y responde 400 con "No puedes reservar en una fecha u hora que ya pasó."). Se agrega la prueba `rechazaHorasDeHoyQueYaPasaron`, que intenta reservar la hora en curso del mismo día; antes solo se probaban días anteriores.
