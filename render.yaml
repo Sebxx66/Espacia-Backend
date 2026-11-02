@@ -1,0 +1,74 @@
+# Blueprint de Render: crea toda Espacia (base de datos, backend y frontend) de una vez.
+# Uso: en Render, New -> Blueprint, elige este repositorio y completa las variables marcadas
+# con "sync: false" (Render las pide en pantalla). Ninguna clave real va en este archivo.
+# Para otra institución basta con cambiar los nombres de los servicios.
+
+databases:
+  - name: espacia-db
+    databaseName: espacia
+    user: espacia
+    plan: free            # la base gratis se borra a los 30 días; para uso real: basic-256mb o superior
+    region: virginia
+    postgresMajorVersion: "17"
+
+services:
+  # Backend: API de Spring Boot construida con el Dockerfile de este repositorio
+  - type: web
+    name: espacia-backend
+    runtime: docker
+    plan: free            # se duerme sin uso; para uso real: starter
+    region: virginia
+    healthCheckPath: /api/v1/rules
+    envVars:
+      - key: DB_HOST
+        fromDatabase: { name: espacia-db, property: host }
+      - key: DB_PORT
+        fromDatabase: { name: espacia-db, property: port }
+      - key: DB_NAME
+        fromDatabase: { name: espacia-db, property: database }
+      - key: DB_USERNAME
+        fromDatabase: { name: espacia-db, property: user }
+      - key: DB_PASSWORD
+        fromDatabase: { name: espacia-db, property: password }
+      - key: JWT_SECRET
+        generateValue: true
+      - key: SEED_DEMO_DATA
+        value: "false"
+      - key: APP_TIME_ZONE
+        value: America/Bogota
+      - key: MAIL_PROVIDER
+        value: brevo
+      - key: ADMIN_NOMBRE
+        sync: false
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: FRONTEND_URL            # dirección pública del frontend, ej. https://espacia.onrender.com
+        sync: false
+      - key: CORS_ALLOWED_ORIGINS    # la misma dirección del frontend
+        sync: false
+      - key: MAIL_API_KEY            # clave de la API de Brevo (xkeysib-...)
+        sync: false
+      - key: MAIL_FROM               # remitente verificado en Brevo
+        sync: false
+
+  # Frontend: sitio estático de React compilado desde el repositorio Espacia-Frontend
+  - type: web
+    name: espacia
+    runtime: static
+    repo: https://github.com/Sebxx66/Espacia-Frontend
+    branch: main
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: VITE_API_URL            # dirección pública del backend, ej. https://espacia-backend.onrender.com
+        sync: false
+      - key: VITE_INSTITUTION_NAME
+        sync: false
+      - key: VITE_PRIVACY_EMAIL
+        sync: false
+      - key: VITE_LEGAL_CITY
+        value: Medellín, Colombia

@@ -2,6 +2,12 @@
 
 Cambios del backend de Espacia, del más reciente al más antiguo. Cada entrada explica qué cambió y cómo está hecho.
 
+## 1.11.0 — Publicada en Render
+
+- **Espacia está en línea** en [espacia.onrender.com](https://espacia.onrender.com): frontend como Static Site, backend como Web Service con Docker, PostgreSQL 17 de Render y correos por Brevo, todo en el plan gratis. El README tiene la demo al inicio, un diagrama del despliegue y la guía paso a paso con cada variable.
+- **`render.yaml` (Blueprint).** Crea la base de datos, el backend y el frontend de una vez desde *New → Blueprint*. Conecta la base al backend solo, genera `JWT_SECRET` y deja como datos a completar en pantalla (`sync: false`) las claves y direcciones, para que ninguna quede en el repositorio. Sirve para instalar Espacia rápido para otra institución.
+- **Conexión por partes.** Si no se define `DB_URL`, la dirección de la base se arma con `DB_HOST`, `DB_PORT` y `DB_NAME`, que es como Render las entrega en el Blueprint. Con `DB_URL` todo sigue igual.
+
 ## 1.10.0 — Listo para desplegar en Render
 
 - **Correo por API HTTPS.** Los planes gratis de Render y Railway (y el Hobby de Railway) bloquean el envío por SMTP, así que ningún correo salía. `EmailService` ahora puede enviar por la API de **Brevo** o **Resend** (`MAIL_PROVIDER=brevo` o `resend`, con `MAIL_API_KEY` y `MAIL_FROM`), que usa el puerto 443 como cualquier página web. Con `MAIL_PROVIDER=smtp`, el valor por defecto, todo sigue igual que antes (Gmail en el PC). El cuerpo se arma como JSON con el cliente HTTP de Java, sin dependencias nuevas; un error del proveedor queda en el log con su código y nunca rompe una reserva.

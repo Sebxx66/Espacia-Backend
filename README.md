@@ -5,6 +5,9 @@ Spring Boot 4 · Java 25 · Spring Security + JWT · PostgreSQL.
 
 El frontend está en el repositorio [Espacia-Frontend](https://github.com/Sebxx66/Espacia-Frontend).
 
+> **Demo en línea:** [espacia.onrender.com](https://espacia.onrender.com) · API: [espacia-backend.onrender.com](https://espacia-backend.onrender.com/api/v1/rules)
+> Corre en el plan gratis de Render: si nadie la ha usado en 15 minutos, la primera carga tarda cerca de un minuto.
+
 ## Vista previa
 
 La interfaz completa está en el repositorio del frontend.
@@ -96,25 +99,62 @@ usa el archivo de contraseñas de PostgreSQL (`%APPDATA%\postgresql\pgpass.conf`
 > Guarda una copia fuera del equipo: si los respaldos quedan en el mismo disco que la base, se pierden juntos.
 > Lo más simple es apuntar la carpeta de respaldos a OneDrive, Google Drive o un disco externo.
 
-## Despliegue con Docker (Render, Railway u otro servidor)
+## Despliegue en Render
+
+Espacia está publicada en [Render](https://render.com) con esta arquitectura:
+
+```
+Navegador ──► espacia.onrender.com          Static Site (frontend React compilado)
+                 │  VITE_API_URL
+                 ▼
+             espacia-backend.onrender.com   Web Service con Docker (este repositorio)
+                 │  red interna de Render            │  HTTPS (API)
+                 ▼                                    ▼
+             espacia-db (PostgreSQL 17)          Brevo (correos)
+```
 
 El `Dockerfile` compila el backend y crea una imagen con Java 25 lista para producción: usuario sin privilegios,
 memoria ajustada a servidores pequeños (512 MB) y el puerto que indique la variable `PORT` (8080 por defecto).
+Los planes gratis de Render y Railway bloquean el correo por SMTP, por eso en Render los correos salen por la API de
+Brevo (`MAIL_PROVIDER=brevo`).
 
-En **Render**: *New → Web Service* con este repositorio (Render detecta el `Dockerfile`), una base *Postgres* en la
-misma región y estas variables como mínimo:
+### Opción A: de un solo paso con `render.yaml`
 
-| Variable | Valor |
-|---|---|
-| `DB_URL` | `jdbc:postgresql://HOST:5432/BASE` (datos de la base de Render) |
-| `DB_USERNAME`, `DB_PASSWORD` | Usuario y clave de la base |
-| `JWT_SECRET` | Generada (botón *Generate*) |
-| `ADMIN_NOMBRE`, `ADMIN_EMAIL`, `ADMIN_PASSWORD` | Administrador inicial |
-| `SEED_DEMO_DATA` | `false` |
-| `FRONTEND_URL`, `CORS_ALLOWED_ORIGINS` | Dirección pública del frontend |
-| `MAIL_PROVIDER`, `MAIL_API_KEY`, `MAIL_FROM` | `brevo` o `resend`, su clave y el remitente verificado |
+`render.yaml` describe la base de datos, el backend y el frontend. En Render: **New → Blueprint**, elige este
+repositorio y completa las variables que pide (administrador, dirección del frontend, clave y remitente de Brevo,
+dirección del backend para el frontend). Render crea la base, genera `JWT_SECRET` y conecta la base al backend solo.
+Cambia los nombres de los servicios si ya existe una instalación con esos nombres en la misma cuenta.
 
-*Health Check Path*: `/api/v1/rules`. Los planes gratis de Render y Railway bloquean SMTP, por eso el correo va por API.
+### Opción B: paso a paso desde el panel
+
+1. **Base de datos:** *New → Postgres*. Nombre `espacia-db`, base `espacia`, usuario `espacia`, región Virginia,
+   versión 17. En *Connect → Internal* están el host (`dpg-...-a`) y la contraseña.
+2. **Backend:** *New → Web Service* con este repositorio. Render detecta el `Dockerfile`. Misma región que la base,
+   *Health Check Path* `/api/v1/rules` y estas variables:
+
+   | Variable | Valor |
+   |---|---|
+   | `DB_URL` | `jdbc:postgresql://HOST_INTERNO:5432/espacia` (o `DB_HOST`, `DB_PORT` y `DB_NAME` por separado) |
+   | `DB_USERNAME`, `DB_PASSWORD` | Usuario y contraseña de la base |
+   | `JWT_SECRET` | Botón *Generate* (32 caracteres o más) |
+   | `ADMIN_NOMBRE`, `ADMIN_EMAIL`, `ADMIN_PASSWORD` | Administrador inicial, con una contraseña fuerte |
+   | `SEED_DEMO_DATA` | `false` (sin cuentas de demostración) |
+   | `APP_TIME_ZONE` | `America/Bogota` |
+   | `FRONTEND_URL`, `CORS_ALLOWED_ORIGINS` | Dirección pública del frontend, sin `/` al final |
+   | `MAIL_PROVIDER`, `MAIL_API_KEY`, `MAIL_FROM` | `brevo`, la clave de la API y el remitente verificado |
+
+3. **Frontend:** *New → Static Site* con el repositorio del frontend (ver su README).
+4. **Correo con Brevo (gratis, 300 correos al día):** verifica el teléfono de la cuenta; en *Remitentes* agrega y
+   confirma el correo remitente; en *SMTP y API → Claves API* crea una clave con acceso restringido solo a
+   *Emails transaccionales*. No actives el bloqueo por IP: Render cambia de IP.
+
+### Tener en cuenta
+
+- **Plan gratis:** el backend se duerme a los 15 minutos sin uso (la siguiente visita tarda cerca de un minuto y
+  mientras duerme no corren las tareas programadas) y la base de datos gratis **se borra a los 30 días**. Para uso
+  real: backend *Starter* y base *Basic* o un PostgreSQL externo (Neon, Supabase).
+- **Cada push a `main` se publica solo.** La integración continua construye la misma imagen de Docker y comprueba que arranca.
+- **Datos iniciales:** la base de Render empieza vacía. Los espacios se crean desde el panel del administrador.
 
 ## Documentación de la API
 
@@ -136,7 +176,7 @@ Todo se configura con variables de entorno; los valores por defecto coinciden co
 
 | Variable | Por defecto | Uso |
 |---|---|---|
-| `DB_URL` | `jdbc:postgresql://localhost:5432/bibliospace_db` | Conexión a PostgreSQL |
+| `DB_URL` | `jdbc:postgresql://localhost:5432/bibliospace_db` | Conexión a PostgreSQL. Si no se define, se arma con `DB_HOST`, `DB_PORT` y `DB_NAME` (`localhost`, `5432`, `bibliospace_db`) |
 | `DB_USERNAME` | `postgres` | Usuario de la base de datos |
 | `DB_PASSWORD` | `bibliospace` | Contraseña de la base de datos (también la usa `docker compose`) |
 | `JWT_SECRET` | sin valor | Clave para firmar los tokens (mínimo 32 caracteres). Si no se define, se genera una al azar en cada arranque y las sesiones se cierran al reiniciar. **Defínela siempre en producción** |
