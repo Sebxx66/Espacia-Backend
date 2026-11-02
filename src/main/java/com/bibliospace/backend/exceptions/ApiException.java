@@ -9,9 +9,17 @@ public class ApiException extends RuntimeException {
 
     private final HttpStatus status;
 
+    // Código opcional para que el frontend reaccione a un caso concreto (por ejemplo, EMAIL_NO_VERIFICADO)
+    private final String code;
+
     public ApiException(HttpStatus status, String message) {
+        this(status, message, null);
+    }
+
+    public ApiException(HttpStatus status, String message, String code) {
         super(message);
         this.status = status;
+        this.code = code;
     }
 
     public static ApiException badRequest(String message) {

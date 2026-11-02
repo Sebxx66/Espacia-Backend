@@ -24,6 +24,7 @@ public class ReminderService {
 
     private final ReservationRepository reservationRepository;
     private final EmailService emailService;
+    private final BookingRulesService bookingRulesService;
 
     @Value("${app.reminder-minutes:60}")
     private int minutosAntes;
@@ -53,10 +54,12 @@ public class ReminderService {
                 continue; // cuentas de demostración: no tienen buzón real
             }
             String cuando = r.getFecha().equals(ahora.toLocalDate()) ? "hoy" : "mañana";
+            int horas = bookingRulesService.get().getHorasCancelacion();
+            String plazo = horas == 0 ? "antes de que empiece" : "hasta " + horas + (horas == 1 ? " hora" : " horas") + " antes";
             emailService.sendReminder(email, r.getUsuario().getNombre(),
                     "Tu reserva en " + r.getEspacio().getNombre() + " empieza " + cuando + " a las "
                             + r.getHoraInicio().format(HORA) + " y termina a las " + r.getHoraFin().format(HORA)
-                            + ". Recuerda llegar a tiempo; si ya no la necesitas, cancélala hasta 1 hora antes para liberar el espacio.");
+                            + ". Recuerda llegar a tiempo; si ya no la necesitas, cancélala " + plazo + " para liberar el espacio.");
             log.info("Recordatorio enviado a {} (reserva {})", email, r.getId());
         }
     }

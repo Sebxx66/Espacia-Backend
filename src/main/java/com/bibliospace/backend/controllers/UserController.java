@@ -44,4 +44,10 @@ public class UserController {
         userService.resetPassword(id, request);
         return ResponseEntity.noContent().build();
     }
+
+    // Marca el correo como confirmado sin esperar el enlace
+    @PatchMapping("/{id}/verify-email")
+    public ResponseEntity<UserResponse> verifyEmail(@PathVariable Long id) {
+        return ResponseEntity.ok(userService.verifyEmail(id));
+    }
 }

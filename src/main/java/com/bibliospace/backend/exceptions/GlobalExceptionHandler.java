@@ -16,7 +16,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 
 import java.util.Map;
 
-// Todas las respuestas de error tienen la forma {"message": "..."}
+// Todas las respuestas de error tienen la forma {"message": "..."} (y "code" en algunos casos)
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -26,6 +26,9 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ApiException.class)
     public ResponseEntity<Map<String, String>> handleApi(ApiException e) {
+        if (e.getCode() != null) {
+            return ResponseEntity.status(e.getStatus()).body(Map.of("message", e.getMessage(), "code", e.getCode()));
+        }
         return error(e.getStatus(), e.getMessage());
     }
 

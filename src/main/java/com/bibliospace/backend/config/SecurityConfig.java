@@ -39,7 +39,9 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 // 2. Login, registro y recuperación de contraseña son públicos
                 .requestMatchers(HttpMethod.POST, "/api/v1/auth/login", "/api/v1/auth/register",
-                        "/api/v1/auth/forgot-password", "/api/v1/auth/reset-password").permitAll()
+                        "/api/v1/auth/forgot-password", "/api/v1/auth/reset-password",
+                        "/api/v1/auth/verify-email", "/api/v1/auth/verify-email/check",
+                        "/api/v1/auth/resend-verification").permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 // Las reglas de reserva vigentes se muestran en la pantalla de inicio y en los Términos de uso
                 .requestMatchers(HttpMethod.GET, "/api/v1/rules").permitAll()

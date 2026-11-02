@@ -1,5 +1,7 @@
 package com.bibliospace.backend.support;
 
+import com.bibliospace.backend.repositories.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import tools.jackson.databind.JsonNode;
@@ -30,6 +32,9 @@ public abstract class ApiTestBase {
 
     @LocalServerPort
     private int port;
+
+    @Autowired
+    protected UserRepository userRepository;
 
     public record Response(int status, JsonNode body) {
         public String message() {
@@ -93,9 +98,24 @@ public abstract class ApiTestBase {
 
     // Registra un estudiante nuevo y devuelve su token
     protected String newStudent() {
-        Response r = post("/auth/register", Map.of("nombre", "Estudiante", "email", uniqueEmail("est"), "password", PASSWORD, "aceptaPrivacidad", true), null);
+        return registerVerified(uniqueEmail("est")).body().get("token").asString();
+    }
+
+    protected Response register(String email, String password) {
+        return post("/auth/register", Map.of("nombre", "Ana", "email", email, "password", password, "aceptaPrivacidad", true), null);
+    }
+
+    // Registra una cuenta, marca su correo como confirmado (sin pasar por el enlace) e inicia sesión.
+    // Devuelve la respuesta del login (token, id, rol...).
+    protected Response registerVerified(String email) {
+        Response r = register(email, PASSWORD);
         assertThat(r.status()).as("registro: %s", r.body()).isEqualTo(200);
-        return r.body().get("token").asString();
+        var user = userRepository.findByEmailIgnoreCase(email).orElseThrow();
+        user.marcarCorreoVerificado();
+        userRepository.save(user);
+        Response login = post("/auth/login", Map.of("email", email, "password", PASSWORD), null);
+        assertThat(login.status()).as("login de %s: %s", email, login.body()).isEqualTo(200);
+        return login;
     }
 
     // El administrador crea una cuenta con el rol indicado; devuelve el token de esa cuenta

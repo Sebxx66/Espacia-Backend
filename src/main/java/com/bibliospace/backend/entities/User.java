@@ -50,6 +50,18 @@ public class User {
     @Column(length = 20)
     private String privacidadVersion;
 
+    // Verificación del correo. false = registrada desde la pantalla de registro y aún sin confirmar.
+    // null (cuentas anteriores a la verificación, demostración) o true = puede entrar.
+    private Boolean emailVerificado;
+
+    private LocalDateTime emailVerificadoEn;
+
+    // Hash SHA-256 del enlace de verificación vigente (el enlace en claro solo va en el correo)
+    @Column(length = 64)
+    private String verificacionTokenHash;
+
+    private LocalDateTime verificacionExpiraEn;
+
     // Momento del último cambio de contraseña: los tokens emitidos antes dejan de servir
     private Instant passwordCambiadaEn;
 
@@ -58,5 +70,17 @@ public class User {
     public void cambiarPassword(String hash) {
         this.password = hash;
         this.passwordCambiadaEn = Instant.now().truncatedTo(ChronoUnit.SECONDS);
+    }
+
+    // true si se registró y todavía no confirmó su correo
+    public boolean correoPendiente() {
+        return Boolean.FALSE.equals(emailVerificado);
+    }
+
+    public void marcarCorreoVerificado() {
+        this.emailVerificado = true;
+        this.emailVerificadoEn = LocalDateTime.now();
+        this.verificacionTokenHash = null;
+        this.verificacionExpiraEn = null;
     }
 }

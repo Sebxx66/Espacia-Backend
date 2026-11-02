@@ -5,9 +5,11 @@ import com.bibliospace.backend.entities.User;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -23,6 +25,13 @@ public interface UserRepository extends JpaRepository<User, Long> {
     long countByRolAndActivoTrue(Role rol);
 
     List<User> findAllByOrderByNombreAsc();
+
+    Optional<User> findByVerificacionTokenHash(String verificacionTokenHash);
+
+    // Cuentas que se registraron y nunca confirmaron el correo antes de la fecha indicada
+    @Modifying
+    @Query("delete from User u where u.emailVerificado = false and u.creadoEn < :antes")
+    int deleteUnverifiedCreatedBefore(@Param("antes") LocalDateTime antes);
 
     // Bloquea al usuario hasta que termine la transacción, para que dos reservas suyas
     // enviadas al mismo tiempo no se salten el límite de reservas activas

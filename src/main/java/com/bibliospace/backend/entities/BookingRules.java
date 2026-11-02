@@ -16,6 +16,7 @@ import java.time.LocalDateTime;
 public class BookingRules {
 
     public static final long ID = 1L;
+    public static final String DOMINIOS_POR_DEFECTO = "amigo.edu.co";
 
     @Id
     private Long id;
@@ -51,6 +52,11 @@ public class BookingRules {
     @Column(nullable = false)
     private Integer diasAnticipacion;
 
+    // Dominios de correo de la institución, separados por coma (ej: "amigo.edu.co").
+    // Sirven para identificar a los usuarios institucionales; también cuentan sus subdominios.
+    @Column(length = 500)
+    private String dominiosInstitucionales;
+
     private LocalDateTime actualizadoEn;
 
     // No se publica: GET /rules es público
@@ -70,6 +76,7 @@ public class BookingRules {
                 .horasCancelacion(1)
                 .minutosNoAsistencia(30)
                 .diasAnticipacion(30)
+                .dominiosInstitucionales(DOMINIOS_POR_DEFECTO)
                 .build();
     }
 }

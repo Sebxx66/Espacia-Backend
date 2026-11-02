@@ -40,10 +40,29 @@ public class EmailService {
     public void sendWelcome(String to, String nombre) {
         deliver(to, "¡Bienvenido/a a Espacia!", layout(
                 "¡Bienvenido/a, " + esc(nombre) + "!",
-                "<p>Tu cuenta en Espacia se creó correctamente. Ya puedes iniciar sesión para reservar "
+                "<p>Confirmaste tu correo y tu cuenta en Espacia está lista. Ya puedes iniciar sesión para reservar "
                         + "salas de estudio, equipos y talleres de la biblioteca.</p>"
                         + boton(frontendUrl + "/", "Iniciar sesión")
                         + "<p style=\"font-size:13px;color:#6b7280\">Si no creaste esta cuenta, ignora este mensaje.</p>"));
+    }
+
+    @Async
+    public void sendVerification(String to, String nombre, String link, int horas) {
+        if (!enabled()) {
+            // Solo en desarrollo, sin correo configurado: así se puede activar la cuenta sin SMTP
+            log.info("[correo desactivado] Enlace para confirmar el correo de {}: {}", to, link);
+            return;
+        }
+        deliver(to, "Confirma tu correo · Espacia", layout(
+                "Confirma tu correo",
+                "<p>Hola, " + esc(nombre) + ".</p>"
+                        + "<p>Para terminar de crear tu cuenta en Espacia, confirma que este correo es tuyo. "
+                        + "Pulsa el botón y escribe la contraseña que elegiste al registrarte. "
+                        + "El enlace vence en " + horas + " horas.</p>"
+                        + boton(link, "Confirmar mi correo")
+                        + "<p style=\"font-size:12px;color:#6b7280\">Si el botón no funciona, copia este enlace en tu navegador:<br>"
+                        + esc(link) + "</p>"
+                        + "<p>Si no creaste esta cuenta, ignora este correo: sin confirmar no se puede usar.</p>"));
     }
 
     @Async

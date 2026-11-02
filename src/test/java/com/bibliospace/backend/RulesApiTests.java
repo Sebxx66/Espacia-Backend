@@ -67,4 +67,40 @@ class RulesApiTests extends ApiTestBase {
         assertThat(call("PUT", "/rules", reglas(4), newStudent()).status()).isEqualTo(403);
         assertThat(call("PUT", "/rules", reglas(4), newUserWithRole("ROLE_FUNCIONARIO")).status()).isEqualTo(403);
     }
+
+    @Test
+    void losDominiosInstitucionalesIdentificanALosUsuarios() {
+        assertThat(get("/rules", null).body().get("dominiosInstitucionales").asString()).isEqualTo("amigo.edu.co");
+
+        assertThat(register("ana-" + System.nanoTime() + "@amigo.edu.co", PASSWORD).body().get("institucional").asBoolean()).isTrue();
+        assertThat(register("ana-" + System.nanoTime() + "@est.amigo.edu.co", PASSWORD).body().get("institucional").asBoolean()).isTrue();
+        assertThat(register("ana-" + System.nanoTime() + "@gmail.com", PASSWORD).body().get("institucional").asBoolean()).isFalse();
+        assertThat(register("ana-" + System.nanoTime() + "@falsoamigo.edu.co", PASSWORD).body().get("institucional").asBoolean()).isFalse();
+    }
+
+    @Test
+    void elAdministradorCambiaLosDominiosInstitucionales() {
+        String admin = adminToken();
+        try {
+            Map<String, Object> conDominios = reglas(4);
+            conDominios.put("dominiosInstitucionales", " @Uni.edu.co, otra.edu.co\nuni.edu.co ");
+            Response r = call("PUT", "/rules", conDominios, admin);
+            assertThat(r.status()).isEqualTo(200);
+            assertThat(r.body().get("dominiosInstitucionales").asString()).isEqualTo("uni.edu.co,otra.edu.co");
+
+            // Si no se envían, se conservan
+            assertThat(call("PUT", "/rules", reglas(4), admin).body().get("dominiosInstitucionales").asString())
+                    .isEqualTo("uni.edu.co,otra.edu.co");
+
+            Map<String, Object> invalido = reglas(4);
+            invalido.put("dominiosInstitucionales", "amigo.edu.co, no es dominio");
+            Response mal = call("PUT", "/rules", invalido, admin);
+            assertThat(mal.status()).isEqualTo(400);
+            assertThat(mal.message()).contains("no es un dominio válido");
+        } finally {
+            Map<String, Object> original = reglas(4);
+            original.put("dominiosInstitucionales", "amigo.edu.co");
+            call("PUT", "/rules", original, admin);
+        }
+    }
 }

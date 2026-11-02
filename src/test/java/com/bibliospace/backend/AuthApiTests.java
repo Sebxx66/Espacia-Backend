@@ -10,13 +10,36 @@ import static org.assertj.core.api.Assertions.assertThat;
 class AuthApiTests extends ApiTestBase {
 
     @Test
-    void registroCreaUnEstudianteConSesionIniciada() {
+    void registroCreaUnEstudianteQueDebeConfirmarSuCorreo() {
         String email = uniqueEmail("nuevo");
-        Response r = post("/auth/register", Map.of("nombre", "Ana", "email", email, "password", PASSWORD, "aceptaPrivacidad", true), null);
+        Response r = register(email, PASSWORD);
 
         assertThat(r.status()).isEqualTo(200);
-        assertThat(r.body().get("rol").asString()).isEqualTo("ROLE_ESTUDIANTE");
-        assertThat(r.body().get("token").asString()).isNotBlank();
+        assertThat(r.body().get("verificacionPendiente").asBoolean()).isTrue();
+        assertThat(r.body().has("token")).isFalse();
+
+        Response login = post("/auth/login", Map.of("email", email, "password", PASSWORD), null);
+        assertThat(login.status()).isEqualTo(403);
+        assertThat(login.body().get("code").asString()).isEqualTo("EMAIL_NO_VERIFICADO");
+
+        Response confirmado = registerVerifiedExisting(email);
+        assertThat(confirmado.body().get("rol").asString()).isEqualTo("ROLE_ESTUDIANTE");
+    }
+
+    // La contraseña equivocada no revela que la cuenta está pendiente
+    @Test
+    void cuentaSinConfirmarConContrasenaIncorrectaResponde401() {
+        String email = uniqueEmail("pendiente");
+        register(email, PASSWORD);
+
+        assertThat(post("/auth/login", Map.of("email", email, "password", "otra-clave-123"), null).status()).isEqualTo(401);
+    }
+
+    private Response registerVerifiedExisting(String email) {
+        var user = userRepository.findByEmailIgnoreCase(email).orElseThrow();
+        user.marcarCorreoVerificado();
+        userRepository.save(user);
+        return post("/auth/login", Map.of("email", email, "password", PASSWORD), null);
     }
 
     @Test
@@ -43,7 +66,7 @@ class AuthApiTests extends ApiTestBase {
     @Test
     void registroRechazaEmailDuplicadoSinImportarMayusculas() {
         String email = uniqueEmail("dup");
-        post("/auth/register", Map.of("nombre", "Ana", "email", email, "password", PASSWORD, "aceptaPrivacidad", true), null);
+        registerVerified(email);
 
         Response r = post("/auth/register", Map.of("nombre", "Otra", "email", email.toUpperCase(), "password", PASSWORD, "aceptaPrivacidad", true), null);
 
@@ -53,7 +76,7 @@ class AuthApiTests extends ApiTestBase {
     @Test
     void loginConContrasenaIncorrectaResponde401ConMensaje() {
         String email = uniqueEmail("login");
-        post("/auth/register", Map.of("nombre", "Ana", "email", email, "password", PASSWORD, "aceptaPrivacidad", true), null);
+        registerVerified(email);
 
         Response r = post("/auth/login", Map.of("email", email, "password", "otra-clave-123"), null);
 
@@ -64,7 +87,7 @@ class AuthApiTests extends ApiTestBase {
     @Test
     void tras5ContrasenasIncorrectasLaCuentaSeBloqueaTemporalmente() {
         String email = uniqueEmail("bloqueo");
-        post("/auth/register", Map.of("nombre", "Ana", "email", email, "password", PASSWORD, "aceptaPrivacidad", true), null);
+        registerVerified(email);
         for (int i = 0; i < 5; i++) {
             assertThat(post("/auth/login", Map.of("email", email, "password", "incorrecta-" + i), null).status()).isEqualTo(401);
         }
@@ -84,8 +107,7 @@ class AuthApiTests extends ApiTestBase {
     @Test
     void cambioDeContrasenaExigeLaActualCorrecta() {
         String email = uniqueEmail("pwd");
-        String token = post("/auth/register", Map.of("nombre", "Ana", "email", email, "password", PASSWORD, "aceptaPrivacidad", true), null)
-                .body().get("token").asString();
+        String token = registerVerified(email).body().get("token").asString();
 
         Response mala = patch("/auth/password", Map.of("actual", "no-es-esta", "nueva", "nueva-clave-9"), token);
         Response buena = patch("/auth/password", Map.of("actual", PASSWORD, "nueva", "nueva-clave-9"), token);
@@ -99,8 +121,7 @@ class AuthApiTests extends ApiTestBase {
     @Test
     void cambiarLaContrasenaCierraLasDemasSesiones() throws InterruptedException {
         String email = uniqueEmail("sesiones");
-        String celular = post("/auth/register", Map.of("nombre", "Ana", "email", email, "password", PASSWORD, "aceptaPrivacidad", true), null)
-                .body().get("token").asString();
+        String celular = registerVerified(email).body().get("token").asString();
         String computador = login(email, PASSWORD);
         // Los tokens guardan la hora de emisión en segundos: se espera para que el cambio sea posterior
         Thread.sleep(1100);
@@ -116,7 +137,7 @@ class AuthApiTests extends ApiTestBase {
     @Test
     void restablecerLaContrasenaCierraLasSesionesDelUsuario() throws InterruptedException {
         String email = uniqueEmail("reset-sesion");
-        Response registro = post("/auth/register", Map.of("nombre", "Ana", "email", email, "password", PASSWORD, "aceptaPrivacidad", true), null);
+        Response registro = registerVerified(email);
         String token = registro.body().get("token").asString();
         long id = registro.body().get("id").asLong();
         Thread.sleep(1100);
@@ -130,7 +151,7 @@ class AuthApiTests extends ApiTestBase {
     @Test
     void cuentaSuspendidaNoPuedeEntrarYSuTokenDejaDeServir() {
         String email = uniqueEmail("susp");
-        Response registro = post("/auth/register", Map.of("nombre", "Ana", "email", email, "password", PASSWORD, "aceptaPrivacidad", true), null);
+        Response registro = registerVerified(email);
         String token = registro.body().get("token").asString();
         long id = registro.body().get("id").asLong();
 
@@ -145,8 +166,7 @@ class AuthApiTests extends ApiTestBase {
     @Test
     void administradorRestableceLaContrasenaDeUnUsuario() {
         String email = uniqueEmail("reset");
-        long id = post("/auth/register", Map.of("nombre", "Ana", "email", email, "password", PASSWORD, "aceptaPrivacidad", true), null)
-                .body().get("id").asLong();
+        long id = registerVerified(email).body().get("id").asLong();
 
         Response r = patch("/users/" + id + "/password", Map.of("password", "temporal-123"), adminToken());
 

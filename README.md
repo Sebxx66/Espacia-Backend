@@ -87,6 +87,8 @@ Todo se configura con variables de entorno; los valores por defecto coinciden co
 | `SEED_DEMO_PASSWORD` | valor de desarrollo | Contraseña de las cuentas de demostración |
 | `MAIL_USERNAME`, `MAIL_PASSWORD` | vacío | Cuenta SMTP. Sin ellas el envío queda desactivado |
 | `MAIL_HOST`, `MAIL_PORT`, `MAIL_FROM_NAME` | `smtp.gmail.com`, `587`, `Espacia` | Servidor SMTP y nombre del remitente |
+| `VERIFY_TOKEN_HOURS` | `24` | Horas que dura el enlace para confirmar el correo al registrarse |
+| `UNVERIFIED_ACCOUNT_DAYS` | `7` | Días tras los que se borran las cuentas que nunca confirmaron su correo |
 | `REMINDER_MINUTES` | `60` | Minutos antes del inicio en que se envía el recordatorio |
 | `APP_TIME_ZONE` | `America/Bogota` | Zona horaria de la biblioteca. Las reglas de horario la usan aunque el servidor esté en otra zona |
 | `API_DOCS` | `true` | Muestra la documentación de la API en `/swagger-ui.html` |
@@ -112,6 +114,8 @@ El administrador las cambia desde **Configuración** en su panel (`PUT /api/v1/r
 - Si nadie valida la llegada en los primeros 30 minutos, la reserva se marca como **no asistida**, el espacio se libera y el usuario recibe un aviso.
 - No se permiten reservas superpuestas en un mismo espacio.
 - Si un espacio pasa a mantenimiento o inactivo, sus reservas futuras se anulan y se notifica a los usuarios.
+- Las cuentas que se registran confirman su correo con un enlace (vence en 24 horas) antes de poder entrar. Las que crea el administrador no lo necesitan.
+- Los correos de los dominios institucionales (por defecto `amigo.edu.co` y sus subdominios) se marcan como institucionales. Se cambian en **Configuración**.
 - Las contraseñas deben tener al menos 8 caracteres.
 - Tras 5 contraseñas incorrectas seguidas, la cuenta se bloquea 15 minutos. La recuperación de contraseña admite 3 solicitudes por hora por correo.
 
@@ -121,11 +125,12 @@ Ver [CHANGELOG.md](CHANGELOG.md).
 
 ## API
 
-Todas las rutas empiezan por `/api/v1`. Los errores responden `{"message": "..."}`.
+Todas las rutas empiezan por `/api/v1`. Los errores responden `{"message": "..."}` (algunos agregan `"code"`).
 
 | Método y ruta | Rol | Descripción |
 |---|---|---|
-| `POST /auth/register` · `POST /auth/login` | Público | Registro (estudiante) e inicio de sesión. Devuelven el token JWT. El registro exige `"aceptaPrivacidad": true` y guarda la fecha y la versión de la política aceptada (`versionPolitica`) |
+| `POST /auth/register` · `POST /auth/login` | Público | Registro (estudiante) e inicio de sesión. El registro exige `"aceptaPrivacidad": true`, guarda la fecha y la versión de la política aceptada (`versionPolitica`) y envía el enlace para confirmar el correo; no devuelve token. El login devuelve el token JWT, o 403 con `"code": "EMAIL_NO_VERIFICADO"` si falta confirmar el correo |
+| `POST /auth/verify-email` · `POST /auth/verify-email/check` · `POST /auth/resend-verification` | Público | Confirmar el correo con el enlace y la contraseña (devuelve el token), revisar si un enlace sigue vigente y reenviarlo |
 | `POST /auth/forgot-password` · `POST /auth/reset-password` | Público | Recuperación de contraseña por correo (el enlace vence en 60 minutos y se usa una sola vez) |
 | `GET /auth/me` · `PATCH /auth/password` | Autenticado | Datos propios y cambio de contraseña |
 | `GET /spaces` · `GET /spaces/{id}` | Autenticado | Catálogo, con ocupación en tiempo real |
@@ -136,7 +141,7 @@ Todas las rutas empiezan por `/api/v1`. Los errores responden `{"message": "..."
 | `GET /reservations?estado=&fecha=` | Funcionario, admin | Todas las reservas |
 | `PATCH /reservations/{id}/check-in` · `/finish` · `/reject` · `/no-show` | Funcionario, admin | Validar llegada, finalizar o devolver, anular, marcar como no asistida |
 | `GET /notifications/me` · `PATCH /notifications/{id}/read` · `/read-all` | Autenticado | Notificaciones |
-| `GET /users` · `POST /users` · `PATCH /users/{id}` · `PATCH /users/{id}/password` | Admin | Gestión de usuarios |
+| `GET /users` · `POST /users` · `PATCH /users/{id}` · `PATCH /users/{id}/password` · `PATCH /users/{id}/verify-email` | Admin | Gestión de usuarios y confirmación manual del correo |
 | `GET /incidents` · `POST /incidents` · `PATCH /incidents/{id}/resolve` | Funcionario, admin | Soporte técnico |
 | `GET /admin/dashboard` | Admin | Estadísticas |
 | `GET /rules` · `PUT /rules` | Público · Admin | Reglas de reserva vigentes y su modificación |

@@ -27,14 +27,17 @@ public class UserService {
     private final ReservationRepository reservationRepository;
     private final PasswordEncoder passwordEncoder;
     private final CurrentUserService currentUserService;
+    private final BookingRulesService bookingRulesService;
 
-    public static UserResponse toResponse(User user, Long reservas) {
+    public static UserResponse toResponse(User user, Long reservas, boolean institucional) {
         return UserResponse.builder()
                 .id(user.getId())
                 .nombre(user.getNombre())
                 .email(user.getEmail())
                 .rol(user.getRol().name())
                 .activo(!Boolean.FALSE.equals(user.getActivo()))
+                .emailVerificado(!user.correoPendiente())
+                .institucional(institucional)
                 .reservas(reservas)
                 .creadoEn(user.getCreadoEn())
                 .build();
@@ -54,7 +57,7 @@ public class UserService {
             counts.put((Long) row[0], (Long) row[1]);
         }
         return userRepository.findAllByOrderByNombreAsc().stream()
-                .map(u -> toResponse(u, counts.getOrDefault(u.getId(), 0L)))
+                .map(u -> toResponse(u, counts.getOrDefault(u.getId(), 0L), bookingRulesService.esInstitucional(u.getEmail())))
                 .toList();
     }
 
@@ -68,8 +71,11 @@ public class UserService {
                 .email(email)
                 .password(passwordEncoder.encode(request.getPassword()))
                 .rol(parseRole(request.getRol()))
+                // El administrador ya sabe quién es la persona: la cuenta no necesita confirmar el correo
+                .emailVerificado(true)
+                .emailVerificadoEn(java.time.LocalDateTime.now())
                 .build());
-        return toResponse(user, 0L);
+        return toResponse(user, 0L, bookingRulesService.esInstitucional(user.getEmail()));
     }
 
     @Transactional
@@ -92,7 +98,7 @@ public class UserService {
 
         user.setRol(nuevoRol);
         user.setActivo(nuevoActivo);
-        return toResponse(user, null);
+        return toResponse(user, null, bookingRulesService.esInstitucional(user.getEmail()));
     }
 
     @Transactional
@@ -100,6 +106,16 @@ public class UserService {
         User user = find(id);
         // Las sesiones abiertas del usuario se cierran
         user.cambiarPassword(passwordEncoder.encode(request.getPassword()));
+    }
+
+    // Confirma el correo a mano (por ejemplo, si el correo de verificación no le llegó)
+    @Transactional
+    public UserResponse verifyEmail(Long id) {
+        User user = find(id);
+        if (user.correoPendiente()) {
+            user.marcarCorreoVerificado();
+        }
+        return toResponse(user, null, bookingRulesService.esInstitucional(user.getEmail()));
     }
 
     private User find(Long id) {

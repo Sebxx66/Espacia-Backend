@@ -3,6 +3,7 @@ package com.bibliospace.backend.dtos.request;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 // Reglas de reserva que el administrador puede cambiar desde el panel
@@ -52,4 +53,8 @@ public class BookingRulesRequest {
     @Min(value = 1, message = "Debe poder reservarse con al menos 1 día de anticipación")
     @Max(value = 365, message = "Los días de anticipación no pueden pasar de 365")
     private Integer diasAnticipacion;
+
+    // Opcional: si no se envía, se conservan los dominios actuales. Vacío = ninguno.
+    @Size(max = 500, message = "La lista de dominios institucionales es demasiado larga")
+    private String dominiosInstitucionales;
 }

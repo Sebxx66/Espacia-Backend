@@ -50,7 +50,8 @@ class PermissionsApiTests extends ApiTestBase {
                 Map.of("nombre", "Pícaro", "email", uniqueEmail("picaro"), "password", PASSWORD, "rol", "ROLE_ADMIN", "aceptaPrivacidad", true), null);
 
         assertThat(r.status()).isEqualTo(200);
-        assertThat(r.body().get("rol").asString()).isEqualTo("ROLE_ESTUDIANTE");
+        assertThat(userRepository.findByEmailIgnoreCase(r.body().get("email").asString()).orElseThrow().getRol().name())
+                .isEqualTo("ROLE_ESTUDIANTE");
     }
 
     @Test

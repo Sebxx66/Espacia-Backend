@@ -27,4 +27,8 @@ public class RegisterRequest {
     // Versión de la Política de privacidad que el usuario aceptó
     @Size(max = 20, message = "Versión de la política no válida")
     private String versionPolitica;
+
+    // Dirección desde la que se usa la app, para armar el enlace de verificación (se valida en el backend)
+    @Size(max = 200)
+    private String appUrl;
 }
