@@ -12,7 +12,7 @@ class AuthApiTests extends ApiTestBase {
     @Test
     void registroCreaUnEstudianteConSesionIniciada() {
         String email = uniqueEmail("nuevo");
-        Response r = post("/auth/register", Map.of("nombre", "Ana", "email", email, "password", PASSWORD), null);
+        Response r = post("/auth/register", Map.of("nombre", "Ana", "email", email, "password", PASSWORD, "aceptaPrivacidad", true), null);
 
         assertThat(r.status()).isEqualTo(200);
         assertThat(r.body().get("rol").asString()).isEqualTo("ROLE_ESTUDIANTE");
@@ -20,8 +20,21 @@ class AuthApiTests extends ApiTestBase {
     }
 
     @Test
+    void registroExigeAutorizarElTratamientoDeDatos() {
+        String email = uniqueEmail("sin-autorizacion");
+        Response sin = post("/auth/register", Map.of("nombre", "Ana", "email", email, "password", PASSWORD), null);
+        Response rechazada = post("/auth/register",
+                Map.of("nombre", "Ana", "email", email, "password", PASSWORD, "aceptaPrivacidad", false), null);
+
+        assertThat(sin.status()).isEqualTo(400);
+        assertThat(sin.message()).contains("tratamiento de tus datos");
+        assertThat(rechazada.status()).isEqualTo(400);
+        assertThat(post("/auth/login", Map.of("email", email, "password", PASSWORD), null).status()).isEqualTo(401);
+    }
+
+    @Test
     void registroRechazaContrasenasDeMenosDe8Caracteres() {
-        Response r = post("/auth/register", Map.of("nombre", "Ana", "email", uniqueEmail("corta"), "password", "1234567"), null);
+        Response r = post("/auth/register", Map.of("nombre", "Ana", "email", uniqueEmail("corta"), "password", "1234567", "aceptaPrivacidad", true), null);
 
         assertThat(r.status()).isEqualTo(400);
         assertThat(r.message()).contains("8 caracteres");
@@ -30,9 +43,9 @@ class AuthApiTests extends ApiTestBase {
     @Test
     void registroRechazaEmailDuplicadoSinImportarMayusculas() {
         String email = uniqueEmail("dup");
-        post("/auth/register", Map.of("nombre", "Ana", "email", email, "password", PASSWORD), null);
+        post("/auth/register", Map.of("nombre", "Ana", "email", email, "password", PASSWORD, "aceptaPrivacidad", true), null);
 
-        Response r = post("/auth/register", Map.of("nombre", "Otra", "email", email.toUpperCase(), "password", PASSWORD), null);
+        Response r = post("/auth/register", Map.of("nombre", "Otra", "email", email.toUpperCase(), "password", PASSWORD, "aceptaPrivacidad", true), null);
 
         assertThat(r.status()).isEqualTo(409);
     }
@@ -40,7 +53,7 @@ class AuthApiTests extends ApiTestBase {
     @Test
     void loginConContrasenaIncorrectaResponde401ConMensaje() {
         String email = uniqueEmail("login");
-        post("/auth/register", Map.of("nombre", "Ana", "email", email, "password", PASSWORD), null);
+        post("/auth/register", Map.of("nombre", "Ana", "email", email, "password", PASSWORD, "aceptaPrivacidad", true), null);
 
         Response r = post("/auth/login", Map.of("email", email, "password", "otra-clave-123"), null);
 
@@ -51,7 +64,7 @@ class AuthApiTests extends ApiTestBase {
     @Test
     void tras5ContrasenasIncorrectasLaCuentaSeBloqueaTemporalmente() {
         String email = uniqueEmail("bloqueo");
-        post("/auth/register", Map.of("nombre", "Ana", "email", email, "password", PASSWORD), null);
+        post("/auth/register", Map.of("nombre", "Ana", "email", email, "password", PASSWORD, "aceptaPrivacidad", true), null);
         for (int i = 0; i < 5; i++) {
             assertThat(post("/auth/login", Map.of("email", email, "password", "incorrecta-" + i), null).status()).isEqualTo(401);
         }
@@ -71,7 +84,7 @@ class AuthApiTests extends ApiTestBase {
     @Test
     void cambioDeContrasenaExigeLaActualCorrecta() {
         String email = uniqueEmail("pwd");
-        String token = post("/auth/register", Map.of("nombre", "Ana", "email", email, "password", PASSWORD), null)
+        String token = post("/auth/register", Map.of("nombre", "Ana", "email", email, "password", PASSWORD, "aceptaPrivacidad", true), null)
                 .body().get("token").asString();
 
         Response mala = patch("/auth/password", Map.of("actual", "no-es-esta", "nueva", "nueva-clave-9"), token);
@@ -86,7 +99,7 @@ class AuthApiTests extends ApiTestBase {
     @Test
     void cambiarLaContrasenaCierraLasDemasSesiones() throws InterruptedException {
         String email = uniqueEmail("sesiones");
-        String celular = post("/auth/register", Map.of("nombre", "Ana", "email", email, "password", PASSWORD), null)
+        String celular = post("/auth/register", Map.of("nombre", "Ana", "email", email, "password", PASSWORD, "aceptaPrivacidad", true), null)
                 .body().get("token").asString();
         String computador = login(email, PASSWORD);
         // Los tokens guardan la hora de emisión en segundos: se espera para que el cambio sea posterior
@@ -103,7 +116,7 @@ class AuthApiTests extends ApiTestBase {
     @Test
     void restablecerLaContrasenaCierraLasSesionesDelUsuario() throws InterruptedException {
         String email = uniqueEmail("reset-sesion");
-        Response registro = post("/auth/register", Map.of("nombre", "Ana", "email", email, "password", PASSWORD), null);
+        Response registro = post("/auth/register", Map.of("nombre", "Ana", "email", email, "password", PASSWORD, "aceptaPrivacidad", true), null);
         String token = registro.body().get("token").asString();
         long id = registro.body().get("id").asLong();
         Thread.sleep(1100);
@@ -117,7 +130,7 @@ class AuthApiTests extends ApiTestBase {
     @Test
     void cuentaSuspendidaNoPuedeEntrarYSuTokenDejaDeServir() {
         String email = uniqueEmail("susp");
-        Response registro = post("/auth/register", Map.of("nombre", "Ana", "email", email, "password", PASSWORD), null);
+        Response registro = post("/auth/register", Map.of("nombre", "Ana", "email", email, "password", PASSWORD, "aceptaPrivacidad", true), null);
         String token = registro.body().get("token").asString();
         long id = registro.body().get("id").asLong();
 
@@ -132,7 +145,7 @@ class AuthApiTests extends ApiTestBase {
     @Test
     void administradorRestableceLaContrasenaDeUnUsuario() {
         String email = uniqueEmail("reset");
-        long id = post("/auth/register", Map.of("nombre", "Ana", "email", email, "password", PASSWORD), null)
+        long id = post("/auth/register", Map.of("nombre", "Ana", "email", email, "password", PASSWORD, "aceptaPrivacidad", true), null)
                 .body().get("id").asLong();
 
         Response r = patch("/users/" + id + "/password", Map.of("password", "temporal-123"), adminToken());

@@ -2,6 +2,12 @@
 
 Cambios del backend de Espacia, del más reciente al más antiguo. Cada entrada explica qué cambió y cómo está hecho.
 
+## 1.5.0 — Autorización de tratamiento de datos
+
+- **El registro exige autorizar el tratamiento de datos personales** (Ley 1581 de 2012). `RegisterRequest` tiene el campo obligatorio `aceptaPrivacidad` (`@AssertTrue`); sin él la API responde 400 y no crea la cuenta.
+- **Prueba de la autorización.** `User` guarda `privacidadAceptadaEn` (fecha y hora) y `privacidadVersion` (versión de la política aceptada, enviada por el frontend en `versionPolitica`).
+- Prueba nueva: `registroExigeAutorizarElTratamientoDeDatos`.
+
 ## 1.4.0 — No asistidas, zona horaria y documentación de la API
 
 - **Reservas no asistidas.** Nuevo estado `NO_ASISTIDA`. `NoShowService` revisa cada minuto las reservas de hoy confirmadas y, si nadie validó la llegada a los `NO_SHOW_MINUTES` (30 por defecto) del inicio, las marca como no asistidas: el horario queda libre y el usuario recibe una notificación y un correo. El personal también puede marcarlo a mano con `PATCH /reservations/{id}/no-show`, solo cuando la reserva ya empezó; antes de esa hora se usa "anular". Las no asistidas siguen contando para el límite diario, para que no se pueda reservar y faltar sin consecuencia.

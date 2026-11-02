@@ -124,7 +124,7 @@ Todas las rutas empiezan por `/api/v1`. Los errores responden `{"message": "..."
 
 | Método y ruta | Rol | Descripción |
 |---|---|---|
-| `POST /auth/register` · `POST /auth/login` | Público | Registro (estudiante) e inicio de sesión. Devuelven el token JWT |
+| `POST /auth/register` · `POST /auth/login` | Público | Registro (estudiante) e inicio de sesión. Devuelven el token JWT. El registro exige `"aceptaPrivacidad": true` y guarda la fecha y la versión de la política aceptada (`versionPolitica`) |
 | `POST /auth/forgot-password` · `POST /auth/reset-password` | Público | Recuperación de contraseña por correo (el enlace vence en 60 minutos y se usa una sola vez) |
 | `GET /auth/me` · `PATCH /auth/password` | Autenticado | Datos propios y cambio de contraseña |
 | `GET /spaces` · `GET /spaces/{id}` | Autenticado | Catálogo, con ocupación en tiempo real |

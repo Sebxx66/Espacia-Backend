@@ -44,6 +44,12 @@ public class User {
     @Column(updatable = false)
     private LocalDateTime creadoEn;
 
+    // Prueba de la autorización de tratamiento de datos: cuándo la aceptó y qué versión de la política
+    private LocalDateTime privacidadAceptadaEn;
+
+    @Column(length = 20)
+    private String privacidadVersion;
+
     // Momento del último cambio de contraseña: los tokens emitidos antes dejan de servir
     private Instant passwordCambiadaEn;
 

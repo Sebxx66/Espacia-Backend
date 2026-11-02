@@ -93,7 +93,7 @@ public abstract class ApiTestBase {
 
     // Registra un estudiante nuevo y devuelve su token
     protected String newStudent() {
-        Response r = post("/auth/register", Map.of("nombre", "Estudiante", "email", uniqueEmail("est"), "password", PASSWORD), null);
+        Response r = post("/auth/register", Map.of("nombre", "Estudiante", "email", uniqueEmail("est"), "password", PASSWORD, "aceptaPrivacidad", true), null);
         assertThat(r.status()).as("registro: %s", r.body()).isEqualTo(200);
         return r.body().get("token").asString();
     }

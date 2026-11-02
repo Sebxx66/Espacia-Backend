@@ -71,6 +71,9 @@ public class AuthService {
                 .email(email)
                 .password(passwordEncoder.encode(request.getPassword()))
                 .rol(Role.ROLE_ESTUDIANTE)
+                .privacidadAceptadaEn(LocalDateTime.now())
+                .privacidadVersion(request.getVersionPolitica() == null || request.getVersionPolitica().isBlank()
+                        ? "1.0" : request.getVersionPolitica().trim())
                 .build();
 
         userRepository.save(user);

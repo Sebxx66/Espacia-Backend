@@ -1,5 +1,6 @@
 package com.bibliospace.backend.dtos.request;
 
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -18,4 +19,12 @@ public class RegisterRequest {
     @NotBlank(message = "La contraseña es obligatoria")
     @Size(min = 8, max = 72, message = "La contraseña debe tener al menos 8 caracteres")
     private String password;
+
+    // Autorización para el tratamiento de datos personales (Ley 1581 de 2012): sin ella no se crea la cuenta
+    @AssertTrue(message = "Debes aceptar los Términos de uso y autorizar el tratamiento de tus datos para crear tu cuenta.")
+    private boolean aceptaPrivacidad;
+
+    // Versión de la Política de privacidad que el usuario aceptó
+    @Size(max = 20, message = "Versión de la política no válida")
+    private String versionPolitica;
 }
