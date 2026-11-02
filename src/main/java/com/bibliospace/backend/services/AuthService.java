@@ -53,6 +53,7 @@ public class AuthService {
     private final BookingRulesService bookingRulesService;
     private final AppUrlResolver appUrlResolver;
     private final PasswordPolicy passwordPolicy;
+    private final ClientIpResolver clientIpResolver;
 
     public static final String CODIGO_SIN_VERIFICAR = "EMAIL_NO_VERIFICADO";
 
@@ -84,6 +85,8 @@ public class AuthService {
             throw ApiException.conflict("Ya existe una cuenta registrada con ese email.");
         }
         passwordPolicy.validar(request.getPassword(), email, request.getNombre());
+        String ip = clientIpResolver.actual();
+        rateLimitService.checkRegistro(ip);
         if (!rateLimitService.allowPasswordReset("verificacion:" + email)) {
             throw ApiException.tooManyRequests("Ya enviamos varios enlaces a ese correo. Revisa tu bandeja (y la carpeta de spam) o inténtalo en una hora.");
         }
@@ -102,6 +105,7 @@ public class AuthService {
                 ? "1.0" : request.getVersionPolitica().trim());
         String token = nuevoEnlaceVerificacion(user);
         userRepository.save(user);
+        rateLimitService.registroHecho(ip);
         enviarVerificacion(user, token, request.getAppUrl());
 
         return RegisterResponse.builder()
@@ -114,7 +118,9 @@ public class AuthService {
     public AuthResponse login(LoginRequest request) {
         String email = normalizeEmail(request.getEmail());
 
-        // Bloqueo temporal tras varios intentos fallidos (responde 429)
+        // Bloqueo temporal tras varios intentos fallidos, de la cuenta o de la red (responde 429)
+        String ip = clientIpResolver.actual();
+        rateLimitService.checkLoginIp(ip);
         rateLimitService.checkLogin(email);
 
         // Autentica las credenciales (si fallan, GlobalExceptionHandler responde 401 o 403)
@@ -125,6 +131,7 @@ public class AuthService {
             );
         } catch (BadCredentialsException e) {
             rateLimitService.loginFailed(email);
+            rateLimitService.loginFailedIp(ip);
             throw e;
         }
         rateLimitService.loginOk(email);
@@ -199,6 +206,7 @@ public class AuthService {
         userRepository.findByEmailIgnoreCase(email)
                 .filter(User::correoPendiente)
                 .filter(u -> rateLimitService.allowPasswordReset("verificacion:" + email))
+                .filter(u -> rateLimitService.allowEmailFromIp(clientIpResolver.actual()))
                 .ifPresent(user -> {
                     String token = nuevoEnlaceVerificacion(user);
                     userRepository.save(user);
@@ -244,7 +252,7 @@ public class AuthService {
     public void forgotPassword(String rawEmail) {
         String email = normalizeEmail(rawEmail);
         // Demasiadas solicitudes: se ignora en silencio (la respuesta es igual para no revelar nada)
-        if (!rateLimitService.allowPasswordReset(email)) {
+        if (!rateLimitService.allowPasswordReset(email) || !rateLimitService.allowEmailFromIp(clientIpResolver.actual())) {
             return;
         }
         userRepository.findByEmailIgnoreCase(email)

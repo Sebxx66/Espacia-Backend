@@ -43,6 +43,11 @@ public abstract class ApiTestBase {
     }
 
     protected Response call(String method, String path, Object body, String token) {
+        return callFrom(null, method, path, body, token);
+    }
+
+    // Igual que call, pero como si la petición viniera de la IP indicada (cabecera que pone Cloudflare en Render)
+    protected Response callFrom(String ip, String method, String path, Object body, String token) {
         try {
             HttpRequest.Builder req = HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/v1" + path))
                     .method(method, body == null
@@ -50,9 +55,20 @@ public abstract class ApiTestBase {
                             : HttpRequest.BodyPublishers.ofString(JSON.writeValueAsString(body)));
             if (body != null) req.header("Content-Type", "application/json");
             if (token != null) req.header("Authorization", "Bearer " + token);
+            if (ip != null) req.header("CF-Connecting-IP", ip);
             HttpResponse<String> res = HTTP.send(req.build(), HttpResponse.BodyHandlers.ofString());
             JsonNode json = res.body() == null || res.body().isBlank() ? JSON.createObjectNode() : JSON.readTree(res.body());
             return new Response(res.statusCode(), json);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    // Respuesta HTTP completa (con cabeceras) de una ruta absoluta
+    protected HttpResponse<String> rawResponse(String absolutePath) {
+        try {
+            return HTTP.send(HttpRequest.newBuilder(URI.create("http://localhost:" + port + absolutePath)).GET().build(),
+                    HttpResponse.BodyHandlers.ofString());
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

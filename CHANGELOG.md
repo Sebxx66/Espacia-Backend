@@ -2,6 +2,15 @@
 
 Cambios del backend de Espacia, del más reciente al más antiguo. Cada entrada explica qué cambió y cómo está hecho.
 
+## 1.12.0 — Más seguridad, auditoría y base en Supabase
+
+- **Topes por red (IP) contra bots.** Además del bloqueo por cuenta, `RateLimitService` limita por red: 20 cuentas nuevas por hora (y 100 en total, para no agotar el cupo de Brevo ni enviar correos a desconocidos), 20 correos de verificación o recuperación por hora y 30 contraseñas incorrectas en 15 minutos aunque sean de cuentas distintas (frena a quien prueba una misma contraseña en muchos correos). Los aciertos no reinician el conteo por red. Los topes son amplios porque en un campus muchos estudiantes salen a internet con la misma IP, y se cambian con variables `LIMITE_*`. Se eligió esto en vez de un CAPTCHA: el usuario no tiene que hacer nada y no depende de un servicio externo.
+- **IP real detrás de Render.** `ClientIpResolver` toma la IP de `CF-Connecting-IP`, la cabecera que pone Cloudflare (el proxy de Render) y que el visitante no puede falsificar; sin esa cabecera usa la IP de la conexión. Configurable con `CLIENT_IP_HEADER`.
+- **Registro de auditoría.** Nueva tabla `audit_log`: quién, cuándo, desde qué IP y qué hizo en el panel (reglas, cuentas creadas, cambios de rol, suspensiones, contraseñas restablecidas, correos confirmados a mano, espacios, anulaciones, inasistencias marcadas e incidencias). Se guarda en la misma transacción que la acción, así que si la acción falla no queda anotada. Guarda nombre y correo como texto para conservar el historial aunque la cuenta cambie. `GET /api/v1/admin/audit?q=&pagina=&tamano=`, solo para administradores, con búsqueda y paginación.
+- **Cabeceras de seguridad.** `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy` (sin cámara, micrófono, ubicación ni pagos) y `Content-Security-Policy: default-src 'none'; frame-ancestors 'none'` en la API, además de las que ya ponía Spring Security. `server.forward-headers-strategy=native` hace que el backend sepa que la conexión original fue por HTTPS, así que también envía HSTS detrás de Render.
+- **Base de datos en Supabase.** La base gratis de Render se borra a los 30 días; ahora vive en Supabase (East US, Session pooler con TLS). El README explica la configuración y cómo se mantiene el backend despierto con UptimeRobot.
+- **Pruebas:** `IpRateLimitApiTests` (topes por red simulando varias IP), `AuditApiTests` (qué se anota, búsqueda, paginación y permisos) y `SecurityHeadersApiTests`.
+
 ## 1.11.0 — Publicada en Render
 
 - **Espacia está en línea** en [espacia.onrender.com](https://espacia.onrender.com): frontend como Static Site, backend como Web Service con Docker, PostgreSQL 17 de Render y correos por Brevo, todo en el plan gratis. El README tiene la demo al inicio, un diagrama del despliegue y la guía paso a paso con cada variable.

@@ -24,6 +24,7 @@ public class BookingRulesService {
 
     private final BookingRulesRepository repository;
     private final CurrentUserService currentUserService;
+    private final AuditService auditService;
 
     private volatile BookingRules cache;
 
@@ -80,6 +81,14 @@ public class BookingRulesService {
         reglas.setActualizadoEn(LocalDateTime.now());
         reglas.setActualizadoPor(currentUserService.get().getEmail());
         cache = repository.save(reglas);
+        auditService.registrar("REGLAS_ACTUALIZADAS", String.format(
+                "Actualizó las reglas: horario %02d:00 a %02d:00, máximo %d h por reserva, %d activas, %d equipo(s) y %d sala(s) por día, "
+                        + "cancelar hasta %d h antes, liberar a los %d min, %d días de anticipación, dominios: %s",
+                reglas.getHoraApertura(), reglas.getHoraCierre(), reglas.getMaxHorasReserva(), reglas.getMaxReservasActivas(),
+                reglas.getMaxEquiposDia(), reglas.getMaxSalasDia(), reglas.getHorasCancelacion(),
+                reglas.getMinutosNoAsistencia(), reglas.getDiasAnticipacion(),
+                reglas.getDominiosInstitucionales() == null || reglas.getDominiosInstitucionales().isBlank()
+                        ? "ninguno" : reglas.getDominiosInstitucionales()));
         return cache;
     }
 

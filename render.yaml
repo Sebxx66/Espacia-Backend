@@ -7,7 +7,7 @@ databases:
   - name: espacia-db
     databaseName: espacia
     user: espacia
-    plan: free            # la base gratis se borra a los 30 días; para uso real: basic-256mb o superior
+    plan: free            # la base gratis se borra a los 30 días: la demo usa Supabase (ver README); para uso real: basic-256mb o superior
     region: virginia
     postgresMajorVersion: "17"
 
@@ -38,6 +38,8 @@ services:
         value: America/Bogota
       - key: MAIL_PROVIDER
         value: brevo
+      - key: API_DOCS                # oculta /swagger-ui.html en producción
+        value: "false"
       - key: ADMIN_NOMBRE
         sync: false
       - key: ADMIN_EMAIL
@@ -72,3 +74,23 @@ services:
         sync: false
       - key: VITE_LEGAL_CITY
         value: Medellín, Colombia
+    # Cabeceras de seguridad del sitio (la política de contenido va en el HTML compilado; aquí la que no puede ir ahí)
+    headers:
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      - path: /*
+        name: Content-Security-Policy
+        value: "frame-ancestors 'none'"
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
+      - path: /*
+        name: Permissions-Policy
+        value: "camera=(), microphone=(), geolocation=(), payment=()"
+      - path: /*
+        name: Strict-Transport-Security
+        value: max-age=31536000

@@ -23,6 +23,7 @@ public class IncidentService {
     private final SpaceRepository spaceRepository;
     private final CurrentUserService currentUserService;
     private final ReservationService reservationService;
+    private final AuditService auditService;
 
     private static IncidentResponse toResponse(Incident i) {
         return new IncidentResponse(i.getId(), i.getEspacio().getId(), i.getEspacio().getNombre(),
@@ -51,6 +52,8 @@ public class IncidentService {
                 .descripcion(request.getDescripcion().trim())
                 .estado(IncidentStatus.ABIERTA)
                 .build());
+        auditService.registrar("INCIDENCIA_REGISTRADA", "Reportó una incidencia en " + espacio.getNombre()
+                + (request.isPonerEnMantenimiento() ? " y lo puso en mantenimiento" : "") + ": " + incident.getDescripcion());
         return toResponse(incident);
     }
 
@@ -67,6 +70,8 @@ public class IncidentService {
         if (reactivarEspacio && "MANTENIMIENTO".equals(incident.getEspacio().getEstado())) {
             incident.getEspacio().setEstado("ACTIVO");
         }
+        auditService.registrar("INCIDENCIA_RESUELTA", "Resolvió la incidencia de " + incident.getEspacio().getNombre()
+                + (reactivarEspacio ? " y habilitó el espacio" : ""));
         return toResponse(incident);
     }
 }

@@ -38,6 +38,7 @@ public class ReservationService {
     private final UserRepository userRepository;
     private final CurrentUserService currentUserService;
     private final NotificationService notificationService;
+    private final AuditService auditService;
 
     public static String codigo(Reservation r) {
         return String.format("R-%d-%04d", r.getFecha().getYear(), r.getId());
@@ -277,6 +278,8 @@ public class ReservationService {
         reserva.setEstado(ReservationStatus.RECHAZADA);
         notificationService.notify(reserva.getUsuario(), "RECHAZADA",
                 "Tu reserva " + codigo(reserva) + " en " + descripcion(reserva) + " fue anulada por el personal de la biblioteca.");
+        auditService.registrar("RESERVA_ANULADA", "Anuló la reserva " + codigo(reserva) + " de "
+                + AuditService.persona(reserva.getUsuario()) + " en " + descripcion(reserva));
         return toResponse(reserva);
     }
 
@@ -291,6 +294,8 @@ public class ReservationService {
             throw ApiException.badRequest("La reserva todavía no empieza. Si no se usará, anúlala.");
         }
         marcarNoAsistida(reserva);
+        auditService.registrar("RESERVA_NO_ASISTIDA", "Marcó como no asistida la reserva " + codigo(reserva) + " de "
+                + AuditService.persona(reserva.getUsuario()) + " en " + descripcion(reserva));
         return toResponse(reserva);
     }
 

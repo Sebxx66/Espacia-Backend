@@ -6,7 +6,7 @@ Spring Boot 4 · Java 25 · Spring Security + JWT · PostgreSQL.
 El frontend está en el repositorio [Espacia-Frontend](https://github.com/Sebxx66/Espacia-Frontend).
 
 > **Demo en línea:** [espacia.onrender.com](https://espacia.onrender.com) · API: [espacia-backend.onrender.com](https://espacia-backend.onrender.com/api/v1/rules)
-> Corre en el plan gratis de Render: si nadie la ha usado en 15 minutos, la primera carga tarda cerca de un minuto.
+> Corre en planes gratis: backend en Render (siempre despierto gracias a UptimeRobot) y base de datos en Supabase.
 
 ## Vista previa
 
@@ -23,7 +23,23 @@ La interfaz completa está en el repositorio del frontend.
 - Reglas de reserva configurables en código: horario, duración, reservas activas y límite diario.
 - Correos automáticos: bienvenida, confirmación, cancelación o anulación, recordatorio antes de la reserva y recuperación de contraseña.
 - Notificaciones dentro de la aplicación, incidencias de soporte técnico y panel de estadísticas.
-- Protección contra abuso: bloqueo temporal tras varios intentos fallidos de inicio de sesión y límite de solicitudes de recuperación de contraseña.
+- Protección contra abuso: bloqueo temporal tras varios intentos fallidos (por cuenta y por red), topes de registros y de correos por red y en total, y verificación del correo antes del primer ingreso.
+- Registro de auditoría: quién cambió reglas, usuarios, espacios, anulaciones e incidencias, cuándo y desde qué red.
+
+## Seguridad
+
+| Medida | Cómo |
+|---|---|
+| Contraseñas | BCrypt; las nuevas no pueden ser comunes ni contener el nombre o el correo (`PasswordPolicy`) |
+| Sesiones | JWT firmado; cambiar la contraseña cierra las demás sesiones |
+| Correo verificado | Las cuentas nuevas no entran hasta abrir el enlace del correo; las que nunca lo hacen se borran a los 7 días |
+| Fuerza bruta | 5 contraseñas incorrectas bloquean la cuenta 15 minutos; 30 desde una misma red (aunque sean de cuentas distintas) bloquean esa red 15 minutos |
+| Bots de registro | Máximo 20 cuentas nuevas por hora desde una misma red y 100 en total, y 20 correos de verificación o recuperación por hora por red. Son amplios porque en una universidad muchos estudiantes comparten la red; se ajustan con variables (ver *Configuración*) |
+| Cabeceras HTTP | `X-Content-Type-Options`, `X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy`, HSTS detrás de HTTPS y `Content-Security-Policy` en la API |
+| Auditoría | Las acciones del panel quedan en `audit_log` con usuario, fecha e IP; el administrador las consulta en *Auditoría* |
+| Base de datos | Sin acceso público: RLS activado en Supabase y conexión cifrada (`sslmode=require`) |
+
+Para saber la IP real detrás de Render se usa la cabecera `CF-Connecting-IP`, que pone Cloudflare (el proxy de Render) y que el visitante no puede falsificar. En un servidor sin proxy se usa la IP de la conexión.
 
 ## Requisitos
 
@@ -108,9 +124,11 @@ Navegador ──► espacia.onrender.com          Static Site (frontend React co
                  │  VITE_API_URL
                  ▼
              espacia-backend.onrender.com   Web Service con Docker (este repositorio)
-                 │  red interna de Render            │  HTTPS (API)
+                 │  TLS (Session pooler)             │  HTTPS (API)
                  ▼                                    ▼
-             espacia-db (PostgreSQL 17)          Brevo (correos)
+             Supabase (PostgreSQL 17, East US)   Brevo (correos)
+
+UptimeRobot consulta /api/v1/rules cada 5 minutos para que el backend no se duerma.
 ```
 
 El `Dockerfile` compila el backend y crea una imagen con Java 25 lista para producción: usuario sin privilegios,
@@ -118,9 +136,38 @@ memoria ajustada a servidores pequeños (512 MB) y el puerto que indique la vari
 Los planes gratis de Render y Railway bloquean el correo por SMTP, por eso en Render los correos salen por la API de
 Brevo (`MAIL_PROVIDER=brevo`).
 
+### Base de datos en Supabase
+
+La base gratis de Render se borra a los 30 días, así que la base vive en [Supabase](https://supabase.com) (plan gratis:
+500 MB, sin límite de horas de uso; se pausa solo si pasa 7 días sin ninguna consulta, lo que no ocurre con el backend encendido).
+
+1. *New project* en la región **East US (North Virginia)**, la misma del backend en Render, y genera una contraseña.
+2. En **Connect → Direct → Session pooler**, tipo JDBC, están el host y el usuario. Usa el *Session pooler*: la conexión
+   directa solo funciona por IPv6 y Render usa IPv4.
+3. Variables del backend en Render:
+
+   | Variable | Valor |
+   |---|---|
+   | `DB_URL` | `jdbc:postgresql://aws-0-us-east-1.pooler.supabase.com:5432/postgres?sslmode=require` |
+   | `DB_USERNAME` | `postgres.REFERENCIA_DEL_PROYECTO` |
+   | `DB_PASSWORD` | La contraseña del proyecto |
+
+Al arrancar, el backend crea las tablas que falten. Para traer los datos de otra base (por ejemplo, la de Render) se copian
+tablas, llaves, índices y filas en una sola transacción y se activa *Row Level Security* en cada tabla: Espacia se conecta
+como dueño de las tablas y no se ve afectado, pero así nadie puede leerlas por la API pública de Supabase.
+Conviene además apagar esa API en *Project Settings → Data API*, porque Espacia no la usa.
+
+### Mantenerla despierta
+
+En el plan gratis, Render duerme el backend a los 15 minutos sin visitas: la siguiente tarda cerca de un minuto y mientras
+duerme no se envían recordatorios ni se borran las cuentas sin confirmar. Un monitor HTTP gratuito de
+[UptimeRobot](https://uptimerobot.com) a `https://espacia-backend.onrender.com/api/v1/rules` cada 5 minutos lo mantiene
+despierto (las 750 horas gratis al mes de Render alcanzan para un servicio encendido todo el mes) y avisa por correo si se cae.
+
 ### Opción A: de un solo paso con `render.yaml`
 
-`render.yaml` describe la base de datos, el backend y el frontend. En Render: **New → Blueprint**, elige este
+`render.yaml` describe una base de datos de Render, el backend y el frontend (sirve para una instalación de prueba;
+para dejarla en Supabase cambia después las tres variables `DB_` como arriba). En Render: **New → Blueprint**, elige este
 repositorio y completa las variables que pide (administrador, dirección del frontend, clave y remitente de Brevo,
 dirección del backend para el frontend). Render crea la base, genera `JWT_SECRET` y conecta la base al backend solo.
 Cambia los nombres de los servicios si ya existe una instalación con esos nombres en la misma cuenta.
@@ -150,9 +197,10 @@ Cambia los nombres de los servicios si ya existe una instalación con esos nombr
 
 ### Tener en cuenta
 
-- **Plan gratis:** el backend se duerme a los 15 minutos sin uso (la siguiente visita tarda cerca de un minuto y
-  mientras duerme no corren las tareas programadas) y la base de datos gratis **se borra a los 30 días**. Para uso
-  real: backend *Starter* y base *Basic* o un PostgreSQL externo (Neon, Supabase).
+- **Plan gratis:** sirve para la demo y para una biblioteca pequeña. Para una institución con muchos usuarios: backend
+  *Starter* de Render (sin límite de horas, más memoria) y el plan *Pro* de Supabase (copias diarias automáticas).
+- **IP real de los visitantes:** Render está detrás de Cloudflare, que pone la IP en `CF-Connecting-IP`. Si se despliega
+  en otro servidor con otro proxy, cambia `CLIENT_IP_HEADER` (o déjala vacía sin proxy).
 - **Cada push a `main` se publica solo.** La integración continua construye la misma imagen de Docker y comprueba que arranca.
 - **Datos iniciales:** la base de Render empieza vacía. Los espacios se crean desde el panel del administrador.
 
@@ -168,7 +216,7 @@ En producción puedes ocultarla con `API_DOCS=false`.
 ./mvnw test
 ```
 
-Usan una base de datos H2 en memoria, así que no necesitan Docker. Levantan el backend completo y lo llaman por HTTP para cubrir registro e inicio de sesión, bloqueo por intentos fallidos, permisos por rol, las reglas de reserva y las reservas simultáneas. En GitHub se ejecutan solas en cada push (`.github/workflows/ci.yml`).
+Usan una base de datos H2 en memoria, así que no necesitan Docker. Levantan el backend completo y lo llaman por HTTP para cubrir registro e inicio de sesión, bloqueo por intentos fallidos (por cuenta y por red), cabeceras de seguridad, auditoría, permisos por rol, las reglas de reserva y las reservas simultáneas. En GitHub se ejecutan solas en cada push (`.github/workflows/ci.yml`).
 
 ## Configuración
 
@@ -194,7 +242,11 @@ Todo se configura con variables de entorno; los valores por defecto coinciden co
 | `BACKUP_TIME`, `BACKUP_KEEP_DAYS` | `03:00`, `14` | Hora del respaldo diario de docker compose y días que se conservan |
 | `REMINDER_MINUTES` | `60` | Minutos antes del inicio en que se envía el recordatorio |
 | `APP_TIME_ZONE` | `America/Bogota` | Zona horaria de la biblioteca. Las reglas de horario la usan aunque el servidor esté en otra zona |
-| `API_DOCS` | `true` | Muestra la documentación de la API en `/swagger-ui.html` |
+| `API_DOCS` | `true` | Muestra la documentación de la API en `/swagger-ui.html`. En producción, `false` |
+| `LIMITE_REGISTROS_POR_IP`, `LIMITE_REGISTROS_POR_HORA` | `20`, `100` | Cuentas nuevas por hora desde una misma red y en total |
+| `LIMITE_CORREOS_POR_IP` | `20` | Correos de verificación o recuperación por hora desde una misma red |
+| `LIMITE_FALLOS_POR_IP` | `30` | Contraseñas incorrectas en 15 minutos desde una misma red antes de bloquearla 15 minutos |
+| `CLIENT_IP_HEADER` | `CF-Connecting-IP` | Cabecera con la IP real del visitante cuando hay un proxy delante. Vacía = IP de la conexión |
 
 ## Roles
 

@@ -29,6 +29,7 @@ public class UserService {
     private final CurrentUserService currentUserService;
     private final BookingRulesService bookingRulesService;
     private final PasswordPolicy passwordPolicy;
+    private final AuditService auditService;
 
     public static UserResponse toResponse(User user, Long reservas, boolean institucional) {
         return UserResponse.builder()
@@ -77,6 +78,8 @@ public class UserService {
                 .emailVerificado(true)
                 .emailVerificadoEn(java.time.LocalDateTime.now())
                 .build());
+        auditService.registrar("USUARIO_CREADO", "Creó la cuenta de " + AuditService.persona(user)
+                + " como " + AuditService.rol(user.getRol()));
         return toResponse(user, 0L, bookingRulesService.esInstitucional(user.getEmail()));
     }
 
@@ -98,6 +101,15 @@ public class UserService {
             throw ApiException.conflict("Debe quedar al menos un administrador activo.");
         }
 
+        if (nuevoRol != user.getRol()) {
+            auditService.registrar("ROL_CAMBIADO", "Cambió el rol de " + AuditService.persona(user) + " de "
+                    + AuditService.rol(user.getRol()) + " a " + AuditService.rol(nuevoRol));
+        }
+        boolean activoAntes = !Boolean.FALSE.equals(user.getActivo());
+        if (nuevoActivo != activoAntes) {
+            auditService.registrar(nuevoActivo ? "USUARIO_REACTIVADO" : "USUARIO_SUSPENDIDO",
+                    (nuevoActivo ? "Reactivó la cuenta de " : "Suspendió la cuenta de ") + AuditService.persona(user));
+        }
         user.setRol(nuevoRol);
         user.setActivo(nuevoActivo);
         return toResponse(user, null, bookingRulesService.esInstitucional(user.getEmail()));
@@ -109,6 +121,7 @@ public class UserService {
         // Las sesiones abiertas del usuario se cierran
         passwordPolicy.validar(request.getPassword(), user.getEmail(), user.getNombre());
         user.cambiarPassword(passwordEncoder.encode(request.getPassword()));
+        auditService.registrar("CONTRASENA_RESTABLECIDA", "Restableció la contraseña de " + AuditService.persona(user));
     }
 
     // Confirma el correo a mano (por ejemplo, si el correo de verificación no le llegó)
@@ -117,6 +130,7 @@ public class UserService {
         User user = find(id);
         if (user.correoPendiente()) {
             user.marcarCorreoVerificado();
+            auditService.registrar("CORREO_CONFIRMADO", "Confirmó manualmente el correo de " + AuditService.persona(user));
         }
         return toResponse(user, null, bookingRulesService.esInstitucional(user.getEmail()));
     }

@@ -32,6 +32,7 @@ public class SpaceService {
     private final ReservationRepository reservationRepository;
     private final IncidentRepository incidentRepository;
     private final ReservationService reservationService;
+    private final AuditService auditService;
 
     @Transactional(readOnly = true)
     public List<SpaceResponse> getAllSpaces() {
@@ -64,6 +65,7 @@ public class SpaceService {
         Space space = new Space();
         apply(space, request);
         Space savedSpace = spaceRepository.save(space);
+        auditService.registrar("ESPACIO_CREADO", "Creó el espacio " + savedSpace.getNombre() + " (" + savedSpace.getTipo() + ")");
         return mapToResponse(savedSpace, null);
     }
 
@@ -71,7 +73,11 @@ public class SpaceService {
     public SpaceResponse updateSpace(Long id, SpaceRequest request) {
         Space space = find(id);
         String estadoAnterior = space.getEstado();
+        String nombreAnterior = space.getNombre();
         apply(space, request);
+        auditService.registrar("ESPACIO_EDITADO", "Editó el espacio " + nombreAnterior
+                + (nombreAnterior.equals(space.getNombre()) ? "" : " (ahora " + space.getNombre() + ")")
+                + (estadoAnterior.equals(space.getEstado()) ? "" : "; estado " + estadoAnterior + " → " + space.getEstado()));
         if ("ACTIVO".equals(estadoAnterior) && !"ACTIVO".equals(space.getEstado())) {
             String motivo = "MANTENIMIENTO".equals(space.getEstado())
                     ? "el espacio entró en mantenimiento."
@@ -88,6 +94,7 @@ public class SpaceService {
             throw ApiException.conflict("Este espacio tiene reservas o incidencias registradas. Márcalo como inactivo en lugar de eliminarlo.");
         }
         spaceRepository.delete(space);
+        auditService.registrar("ESPACIO_ELIMINADO", "Eliminó el espacio " + space.getNombre());
     }
 
     private void apply(Space space, SpaceRequest request) {

@@ -18,6 +18,10 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.header.writers.DelegatingRequestMatcherHeaderWriter;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
+import org.springframework.security.web.header.writers.StaticHeadersWriter;
+import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 
 import java.nio.charset.StandardCharsets;
 
@@ -36,6 +40,16 @@ public class SecurityConfig {
             .cors(Customizer.withDefaults())
             .csrf(csrf -> csrf.disable())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            // Cabeceras de seguridad. Spring ya envía X-Content-Type-Options, X-Frame-Options: DENY y
+            // HSTS (este solo por HTTPS; detrás de Render se reconoce gracias a server.forward-headers-strategy).
+            .headers(headers -> headers
+                .referrerPolicy(referrer -> referrer.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
+                .addHeaderWriter(new StaticHeadersWriter("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=()"))
+                // La API solo devuelve datos: ningún navegador debe ejecutar ni incrustar sus respuestas.
+                // Swagger (fuera de /api) queda sin esta política para que su página funcione.
+                .addHeaderWriter(new DelegatingRequestMatcherHeaderWriter(
+                        PathPatternRequestMatcher.withDefaults().matcher("/api/**"),
+                        new StaticHeadersWriter("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'"))))
             .authorizeHttpRequests(auth -> auth
                 // 2. Login, registro y recuperación de contraseña son públicos
                 .requestMatchers(HttpMethod.POST, "/api/v1/auth/login", "/api/v1/auth/register",
