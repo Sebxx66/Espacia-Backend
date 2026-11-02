@@ -3,8 +3,9 @@
   Programa el respaldo diario de Espacia en el Programador de tareas de Windows.
 .DESCRIPTION
   Crea (o reemplaza) la tarea "Espacia - respaldo diario" para el usuario actual, sin permisos de administrador.
-  Se ejecuta a la hora indicada; si el equipo estaba apagado, en cuanto se encienda. Nunca hace más de un
-  respaldo por día. Para quitarla: programar-respaldo.bat -Quitar
+  Se ejecuta a la hora indicada; si el equipo estaba apagado, en cuanto se encienda. Por defecto nunca hace
+  más de un respaldo por día (-UnoPorDia:$false lo desactiva). Con -OmitirSiApagado no marca error si
+  PostgreSQL no está encendido a esa hora. Para quitarla: programar-respaldo.bat -Quitar
 .EXAMPLE
   programar-respaldo.bat -Hora 13:00 -Carpeta C:\Espacia\respaldos -PgBin C:\Espacia\pgsql\bin
 #>
@@ -16,6 +17,10 @@ param(
     [string]$Base = "bibliospace_db",
     [string]$Usuario = "postgres",
     [int]$Puerto = 5432,
+    # $false: respalda a esa hora aunque ya haya uno de hoy (por ejemplo, el que se hace al iniciar Espacia)
+    [bool]$UnoPorDia = $true,
+    # Si PostgreSQL no está encendido a esa hora, se omite sin error
+    [switch]$OmitirSiApagado,
     [switch]$Quitar
 )
 $ErrorActionPreference = "Stop"
@@ -28,8 +33,10 @@ if ($Quitar) {
 }
 
 $script = Join-Path $PSScriptRoot "respaldar.ps1"
-$argumentos = "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$script`" -UnoPorDia " +
+$argumentos = "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$script`" " +
     "-Carpeta `"$Carpeta`" -Dias $Dias -Base $Base -Usuario $Usuario -Puerto $Puerto"
+if ($UnoPorDia) { $argumentos += " -UnoPorDia" }
+if ($OmitirSiApagado) { $argumentos += " -OmitirSiApagado" }
 if ($PgBin) { $argumentos += " -PgBin `"$PgBin`"" }
 
 $accion = New-ScheduledTaskAction -Execute "powershell.exe" -Argument $argumentos

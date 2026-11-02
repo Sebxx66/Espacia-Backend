@@ -47,5 +47,11 @@ if (-not (Select-String -Path (Join-Path $carpeta "respaldos.log") -Pattern " OK
 if ($LASTEXITCODE -eq 0) { Falla "un respaldo fallido devolvió código 0" }
 if (-not (Select-String -Path (Join-Path $carpeta "respaldos.log") -Pattern "ERROR" -Quiet)) { Falla "el error no quedó en el log" }
 
+# Con -OmitirSiApagado, un servidor apagado no es un error ni deja respaldo
+$antes = (Respaldos).Count
+& "$dir\respaldar.ps1" @comunes -Puerto 5999 -OmitirSiApagado
+if ($LASTEXITCODE -ne 0) { Falla "-OmitirSiApagado devolvió error con el servidor apagado" }
+if ((Respaldos).Count -ne $antes) { Falla "-OmitirSiApagado creó un respaldo" }
+
 Write-Host "Respaldos en Windows: todas las pruebas pasaron." -ForegroundColor Green
 exit 0

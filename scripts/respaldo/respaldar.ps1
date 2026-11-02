@@ -13,6 +13,9 @@ param(
     [int]$Dias = 14,
     # No hace nada si ya hay un respaldo de hoy (para ejecutarlo al iniciar Espacia)
     [switch]$UnoPorDia,
+    # Si PostgreSQL no está encendido, termina sin error (para una tarea programada en un equipo
+    # donde la base solo corre mientras se usa Espacia)
+    [switch]$OmitirSiApagado,
     [string]$PgBin = $env:PG_BIN,
     [string]$Servidor = $(if ($env:DB_HOST) { $env:DB_HOST } else { "localhost" }),
     [int]$Puerto = $(if ($env:DB_PORT) { [int]$env:DB_PORT } else { 5432 }),
@@ -44,6 +47,14 @@ try {
 } catch {
     Write-Registro $Carpeta "ERROR: $($_.Exception.Message)"
     exit 1
+}
+
+if ($OmitirSiApagado) {
+    $listo = Invoke-PgTool (Get-PgTool $PgBin "pg_isready") @("-h", $Servidor, "-p", "$Puerto")
+    if ($listo.Codigo -ne 0) {
+        Write-Host "PostgreSQL no está encendido en ${Servidor}:$Puerto; no se respalda esta vez."
+        exit 0
+    }
 }
 
 $r = Invoke-PgTool $pgDump @("-h", $Servidor, "-p", "$Puerto", "-U", $Usuario, "-d", $Base, "-w",
