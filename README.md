@@ -157,7 +157,7 @@ El administrador las cambia desde **Configuración** en su panel (`PUT /api/v1/r
 - Si un espacio pasa a mantenimiento o inactivo, sus reservas futuras se anulan y se notifica a los usuarios.
 - Las cuentas que se registran confirman su correo con un enlace (vence en 24 horas) antes de poder entrar. Las que crea el administrador no lo necesitan.
 - Los correos de los dominios institucionales (por defecto `amigo.edu.co` y sus subdominios) se marcan como institucionales. Se cambian en **Configuración**.
-- Las contraseñas deben tener al menos 8 caracteres.
+- Las contraseñas nuevas deben tener al menos 8 caracteres y no pueden ser comunes o predecibles (unas 2.100 conocidas, palabras como "espacia" o "contraseña" seguidas de números, secuencias como "12345678") ni contener el nombre o el correo de la persona. Las contraseñas que ya existían siguen funcionando.
 - Tras 5 contraseñas incorrectas seguidas, la cuenta se bloquea 15 minutos. La recuperación de contraseña admite 3 solicitudes por hora por correo.
 
 ## Historial de cambios

@@ -28,6 +28,7 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final CurrentUserService currentUserService;
     private final BookingRulesService bookingRulesService;
+    private final PasswordPolicy passwordPolicy;
 
     public static UserResponse toResponse(User user, Long reservas, boolean institucional) {
         return UserResponse.builder()
@@ -66,6 +67,7 @@ public class UserService {
         if (userRepository.existsByEmailIgnoreCase(email)) {
             throw ApiException.conflict("Ya existe una cuenta registrada con ese email.");
         }
+        passwordPolicy.validar(request.getPassword(), email, request.getNombre());
         User user = userRepository.save(User.builder()
                 .nombre(request.getNombre().trim())
                 .email(email)
@@ -105,6 +107,7 @@ public class UserService {
     public void resetPassword(Long id, PasswordResetRequest request) {
         User user = find(id);
         // Las sesiones abiertas del usuario se cierran
+        passwordPolicy.validar(request.getPassword(), user.getEmail(), user.getNombre());
         user.cambiarPassword(passwordEncoder.encode(request.getPassword()));
     }
 

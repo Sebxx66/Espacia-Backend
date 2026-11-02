@@ -52,6 +52,7 @@ public class AuthService {
     private final RateLimitService rateLimitService;
     private final BookingRulesService bookingRulesService;
     private final AppUrlResolver appUrlResolver;
+    private final PasswordPolicy passwordPolicy;
 
     public static final String CODIGO_SIN_VERIFICAR = "EMAIL_NO_VERIFICADO";
 
@@ -82,6 +83,7 @@ public class AuthService {
         if (user != null && !user.correoPendiente()) {
             throw ApiException.conflict("Ya existe una cuenta registrada con ese email.");
         }
+        passwordPolicy.validar(request.getPassword(), email, request.getNombre());
         if (!rateLimitService.allowPasswordReset("verificacion:" + email)) {
             throw ApiException.tooManyRequests("Ya enviamos varios enlaces a ese correo. Revisa tu bandeja (y la carpeta de spam) o inténtalo en una hora.");
         }
@@ -231,6 +233,7 @@ public class AuthService {
         if (!passwordEncoder.matches(request.getActual(), user.getPassword())) {
             throw ApiException.badRequest("La contraseña actual no es correcta.");
         }
+        passwordPolicy.validar(request.getNueva(), user.getEmail(), user.getNombre());
         user.cambiarPassword(passwordEncoder.encode(request.getNueva()));
         userRepository.save(user);
         return jwtTokenProvider.generateTokenFor(user.getEmail());
@@ -268,6 +271,7 @@ public class AuthService {
         if (!Boolean.TRUE.equals(user.getActivo())) {
             throw ApiException.forbidden("Tu cuenta está suspendida. Contacta al administrador.");
         }
+        passwordPolicy.validar(request.getPassword(), user.getEmail(), user.getNombre());
         user.cambiarPassword(passwordEncoder.encode(request.getPassword()));
         userRepository.save(user);
         // El enlace usado (y cualquier otro pendiente) deja de servir

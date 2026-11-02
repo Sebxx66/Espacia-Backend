@@ -2,6 +2,13 @@
 
 Cambios del backend de Espacia, del más reciente al más antiguo. Cada entrada explica qué cambió y cómo está hecho.
 
+## 1.9.0 — Contraseñas más seguras
+
+- **Las contraseñas nuevas no pueden ser fáciles de adivinar.** `PasswordPolicy` revisa cada contraseña que se crea: en el registro, al cambiarla, al recuperarla y las que asigna el administrador. Se rechaza si está en la lista de contraseñas comunes (`seguridad/contrasenas-comunes.txt`: las de 8 caracteres o más entre las 10.000 más usadas de SecLists, licencia MIT, más algunas en español y del dominio de la app), si es una palabra predecible seguida solo de números o símbolos ("Espacia2026!", "Contraseña123"), si es una secuencia de teclado, letras o números ("qwertyuiop", "87654321"), si repite uno o dos caracteres, o si contiene el nombre o la parte del correo antes de la @. La comparación ignora mayúsculas y tildes.
+- **Sin obligar símbolos.** Se sigue la recomendación del NIST (SP 800-63B): la longitud mínima sigue en 8 y no se exigen caracteres especiales, porque esa regla lleva a contraseñas predecibles. Una frase como "mi perro come arepas" es válida.
+- Las contraseñas que ya existían siguen funcionando; la regla solo aplica a las nuevas.
+- Pruebas nuevas en `PasswordPolicyApiTests`.
+
 ## 1.8.0 — Copias de seguridad automáticas
 
 - **Scripts de respaldo** en `scripts/respaldo/`, para Linux y macOS (`respaldar.sh`, `restaurar.sh`, en `sh` estándar para que también corran en Alpine) y para Windows (`respaldar.ps1`, `restaurar.ps1`, `programar-respaldo.ps1`, con sus `.bat`).
