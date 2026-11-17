@@ -50,7 +50,7 @@ public class ReminderService {
                 continue;
             }
             String email = r.getUsuario().getEmail();
-            if (email == null || email.toLowerCase().endsWith("@espacia.local")) {
+            if (email == null || email.toLowerCase().endsWith(com.espacia.backend.demo.DemoDataService.DOMINIO)) {
                 continue; // cuentas de demostración: no tienen buzón real
             }
             String cuando = r.getFecha().equals(ahora.toLocalDate()) ? "hoy" : "mañana";

@@ -1,5 +1,7 @@
 package com.espacia.backend.config;
 
+import com.espacia.backend.demo.DemoAccountGuard;
+import com.espacia.backend.repositories.UserRepository;
 import com.espacia.backend.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -32,6 +34,7 @@ import java.nio.charset.StandardCharsets;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final UserRepository userRepository;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -59,6 +62,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 // Las reglas de reserva vigentes se muestran en la pantalla de inicio y en los Términos de uso
                 .requestMatchers(HttpMethod.GET, "/api/v1/rules").permitAll()
+                // Si la demostración está activa, la pantalla de inicio muestra sus cuentas
+                .requestMatchers(HttpMethod.GET, "/api/v1/demo").permitAll()
                 // Para que los errores lleguen con su código real (400, 404...) y no como 403
                 .requestMatchers("/error").permitAll()
                 // Documentación de la API (se puede apagar con API_DOCS=false)
@@ -73,7 +78,9 @@ public class SecurityConfig {
                 response.setCharacterEncoding(StandardCharsets.UTF_8.name());
                 response.getWriter().write("{\"message\":\"Tu sesión expiró. Vuelve a iniciar sesión.\"}");
             }))
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+            // Las cuentas de demostración tienen permisos recortados (se revisa con el usuario ya identificado)
+            .addFilterAfter(new DemoAccountGuard(userRepository), JwtAuthenticationFilter.class);
 
         return http.build();
     }

@@ -11,6 +11,10 @@ import java.util.List;
 @Repository
 public interface IncidentRepository extends JpaRepository<Incident, Long> {
 
+    // Datos de las cuentas de demostración (se borran en el reinicio nocturno)
+    long deleteByReportadoPorDemoTrue();
+
+
     @EntityGraph(attributePaths = {"espacio", "reportadoPor"})
     List<Incident> findAllByOrderByIdDesc();
 

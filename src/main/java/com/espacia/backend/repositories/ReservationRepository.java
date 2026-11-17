@@ -13,6 +13,10 @@ import java.util.List;
 @Repository
 public interface ReservationRepository extends JpaRepository<Reservation, Long> {
 
+    // Datos de las cuentas de demostración (se borran en el reinicio nocturno)
+    long deleteByUsuarioDemoTrue();
+
+
     // Lista el historial de reservas de un estudiante específico
     List<Reservation> findByUsuarioId(Long usuarioId);
 

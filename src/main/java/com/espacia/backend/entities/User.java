@@ -40,6 +40,12 @@ public class User {
     @Builder.Default
     private Boolean activo = true;
 
+    // Cuenta de demostración: tiene permisos recortados (ver DemoAccountGuard) y sus datos se reinician cada noche
+    @ColumnDefault("false")
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean demo = false;
+
     @CreationTimestamp
     @Column(updatable = false)
     private LocalDateTime creadoEn;
