@@ -8,7 +8,7 @@
         <version>4.1.1</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
-    <groupId>com.bibliospace</groupId>
+    <groupId>com.espacia</groupId>
     <artifactId>backend</artifactId>
     <version>1.12.0</version>
     <name>backend</name>

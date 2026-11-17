@@ -14,7 +14,7 @@ param(
     [string]$Carpeta = (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) "respaldos"),
     [int]$Dias = 14,
     [string]$PgBin = $env:PG_BIN,
-    [string]$Base = "bibliospace_db",
+    [string]$Base = "espacia_db",
     [string]$Usuario = "postgres",
     [int]$Puerto = 5432,
     # $false: respalda a esa hora aunque ya haya uno de hoy (por ejemplo, el que se hace al iniciar Espacia)

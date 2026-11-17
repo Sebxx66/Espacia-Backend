@@ -48,7 +48,7 @@ Para saber la IP real detrás de Render se usa la cabecera `CF-Connecting-IP`, q
 
 ## Puesta en marcha
 
-1. Levanta la base de datos (los datos se guardan en el volumen `bibliospace-data`):
+1. Levanta la base de datos (los datos se guardan en el volumen `espacia-data`):
 
    ```bash
    docker compose up -d
@@ -224,9 +224,9 @@ Todo se configura con variables de entorno; los valores por defecto coinciden co
 
 | Variable | Por defecto | Uso |
 |---|---|---|
-| `DB_URL` | `jdbc:postgresql://localhost:5432/bibliospace_db` | Conexión a PostgreSQL. Si no se define, se arma con `DB_HOST`, `DB_PORT` y `DB_NAME` (`localhost`, `5432`, `bibliospace_db`) |
+| `DB_URL` | `jdbc:postgresql://localhost:5432/espacia_db` | Conexión a PostgreSQL. Si no se define, se arma con `DB_HOST`, `DB_PORT` y `DB_NAME` (`localhost`, `5432`, `espacia_db`) |
 | `DB_USERNAME` | `postgres` | Usuario de la base de datos |
-| `DB_PASSWORD` | `bibliospace` | Contraseña de la base de datos (también la usa `docker compose`) |
+| `DB_PASSWORD` | `espacia` | Contraseña de la base de datos (también la usa `docker compose`) |
 | `JWT_SECRET` | sin valor | Clave para firmar los tokens (mínimo 32 caracteres). Si no se define, se genera una al azar en cada arranque y las sesiones se cierran al reiniciar. **Defínela siempre en producción** |
 | `CORS_ALLOWED_ORIGINS` | `localhost` y `127.0.0.1` en los puertos 5173 y 8443 | Orígenes del frontend, separados por coma. En desarrollo el frontend reenvía sus llamadas por su propio servidor, así que no hace falta agregar la IP de cada celular |
 | `FRONTEND_URL` | `http://localhost:8443` | Dirección del frontend, usada en los enlaces de los correos |

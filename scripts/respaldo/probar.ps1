@@ -9,7 +9,7 @@ function Falla([string]$Texto) { Write-Host "FALLA: $Texto" -ForegroundColor Red
 function Respaldos { @(Get-ChildItem -Path $carpeta -Filter "espacia-*.dump" -File) }
 $comunes = @{ Carpeta = $carpeta; PgBin = $PgBin }
 
-Q "bibliospace_db" "drop table if exists prueba_respaldo; create table prueba_respaldo(id serial primary key, nombre text not null); insert into prueba_respaldo(nombre) select 'fila ' || g from generate_series(1, 500) g;" | Out-Null
+Q "espacia_db" "drop table if exists prueba_respaldo; create table prueba_respaldo(id serial primary key, nombre text not null); insert into prueba_respaldo(nombre) select 'fila ' || g from generate_series(1, 500) g;" | Out-Null
 
 & "$dir\respaldar.ps1" @comunes
 if ($LASTEXITCODE -ne 0) { Falla "respaldar.ps1 terminó con código $LASTEXITCODE" }
@@ -34,11 +34,11 @@ if (-not (Test-Path $reciente)) { Falla "se borró un respaldo reciente" }
 Remove-Item $reciente
 
 # Restauración completa: deshace un cambio posterior y deja un respaldo previo de seguridad
-Q "bibliospace_db" "delete from prueba_respaldo where id > 100" | Out-Null
+Q "espacia_db" "delete from prueba_respaldo where id > 100" | Out-Null
 $antes = (Respaldos).Count
 & "$dir\restaurar.ps1" @comunes -Archivo $archivo -Reemplazar -Confirmado
 if ($LASTEXITCODE -ne 0) { Falla "la restauración completa falló" }
-if ((Q "bibliospace_db" "select count(*) from prueba_respaldo") -ne "500") { Falla "la restauración completa no recuperó las filas" }
+if ((Q "espacia_db" "select count(*) from prueba_respaldo") -ne "500") { Falla "la restauración completa no recuperó las filas" }
 if ((Respaldos).Count -ne $antes + 1) { Falla "no se hizo el respaldo previo a restaurar" }
 if (-not (Select-String -Path (Join-Path $carpeta "respaldos.log") -Pattern " OK espacia-" -Quiet)) { Falla "el log no registra los respaldos" }
 

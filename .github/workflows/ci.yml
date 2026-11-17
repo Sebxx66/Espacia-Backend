@@ -32,8 +32,8 @@ jobs:
       postgres:
         image: postgres:17-alpine
         env:
-          POSTGRES_DB: bibliospace_db
-          POSTGRES_PASSWORD: bibliospace
+          POSTGRES_DB: espacia_db
+          POSTGRES_PASSWORD: espacia
         ports: ["5432:5432"]
         options: >-
           --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 3s --health-retries 10
@@ -41,7 +41,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Probar respaldar.sh y restaurar.sh
         run: |
-          docker run --rm --network host -e DB_PASSWORD=bibliospace -e BACKUP_DIR=/tmp/respaldos \
+          docker run --rm --network host -e DB_PASSWORD=espacia -e BACKUP_DIR=/tmp/respaldos \
             -v "$PWD/scripts/respaldo:/scripts:ro" postgres:17-alpine sh /scripts/probar.sh
 
   # Respaldos en Windows (la instalación local de Espacia): PowerShell 5.1 con el PostgreSQL del equipo de GitHub
@@ -55,7 +55,7 @@ jobs:
           $svc = Get-Service -Name "postgresql*" | Select-Object -First 1
           Set-Service -Name $svc.Name -StartupType Manual
           Start-Service -Name $svc.Name
-          & "$env:PGBIN\createdb.exe" -h localhost -U postgres -w bibliospace_db
+          & "$env:PGBIN\createdb.exe" -h localhost -U postgres -w espacia_db
       - name: Probar respaldar.ps1 y restaurar.ps1
         shell: powershell
         run: |
@@ -69,8 +69,8 @@ jobs:
       postgres:
         image: postgres:17-alpine
         env:
-          POSTGRES_DB: bibliospace_db
-          POSTGRES_PASSWORD: bibliospace
+          POSTGRES_DB: espacia_db
+          POSTGRES_PASSWORD: espacia
         ports: ["5432:5432"]
         options: >-
           --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 3s --health-retries 10
@@ -81,7 +81,7 @@ jobs:
       - name: Arrancar y comprobar que responde
         run: |
           docker run -d --name espacia --network host -e PORT=9090 -e JWT_SECRET=$(openssl rand -hex 32) \
-            -e DB_URL=jdbc:postgresql://localhost:5432/bibliospace_db -e DB_PASSWORD=bibliospace \
+            -e DB_URL=jdbc:postgresql://localhost:5432/espacia_db -e DB_PASSWORD=espacia \
             -e SEED_DEMO_DATA=false -e ADMIN_PASSWORD=$(openssl rand -hex 12) espacia-backend
           for i in $(seq 1 60); do
             if curl -fsS http://localhost:9090/api/v1/rules > /dev/null; then echo "Responde en el puerto 9090"; exit 0; fi
