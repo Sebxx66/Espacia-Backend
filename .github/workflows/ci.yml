@@ -23,6 +23,22 @@ jobs:
           chmod +x mvnw
           ./mvnw -B test
 
+      # Resumen de cobertura en la página de la ejecución y reporte completo para descargar
+      - name: Cobertura
+        if: always()
+        run: |
+          if [ -f target/site/jacoco/jacoco.csv ]; then
+            awk -F, 'NR>1 { lm+=$8; lc+=$9; bm+=$6; bc+=$7 } END {
+              printf "### Cobertura de pruebas\n\n| Métrica | Cobertura |\n|---|---|\n| Líneas | %.1f %% |\n| Ramas | %.1f %% |\n", 100*lc/(lm+lc), 100*bc/(bm+bc)
+            }' target/site/jacoco/jacoco.csv >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cobertura
+          path: target/site/jacoco/
+          if-no-files-found: ignore
+
   # Respaldos en Linux y en el contenedor de docker-compose: los scripts corren dentro de la misma
   # imagen postgres:17-alpine que usa el servicio de respaldo, contra un PostgreSQL 17 real
   respaldos-linux:

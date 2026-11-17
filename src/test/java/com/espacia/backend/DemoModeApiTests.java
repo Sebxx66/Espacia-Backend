@@ -2,7 +2,7 @@ package com.espacia.backend;
 
 import com.espacia.backend.demo.DemoDataService;
 import com.espacia.backend.entities.Role;
-import com.espacia.backend.repositories.ReservationRepository;
+import com.espacia.backend.repositories.IncidentRepository;
 import com.espacia.backend.support.ApiTestBase;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,7 +22,7 @@ class DemoModeApiTests extends ApiTestBase {
     private DemoDataService demoDataService;
 
     @Autowired
-    private ReservationRepository reservationRepository;
+    private IncidentRepository incidentRepository;
 
     @Test
     void publicaLasCuentasDeDemostracionSinIniciarSesion() {
@@ -72,23 +72,25 @@ class DemoModeApiTests extends ApiTestBase {
 
     @Test
     void elReinicioBorraLoQueHicieronLosVisitantes() {
-        String token = login("estudiante@espacia.local", CLAVE);
-        long espacio = newSpace();
-        Response reserva = reserve(token, espacio, tomorrow(), "15:00", "16:00");
-        assertThat(reserva.status()).as("reserva: %s", reserva.body()).isEqualTo(200);
-        long id = reserva.body().get("id").asLong();
+        // Un visitante entra como funcionario y reporta una incidencia
+        String token = login("funcionario@espacia.local", CLAVE);
+        Response incidencia = post("/incidents", Map.of("espacioId", newSpace(),
+                "descripcion", "Incidencia creada por un visitante de la demostración"), token);
+        assertThat(incidencia.status()).as("incidencia: %s", incidencia.body()).isEqualTo(200);
+        long id = incidencia.body().get("id").asLong();
 
-        // Alguien desactiva una cuenta de demostración desde una cuenta real
-        var funcionario = userRepository.findByEmailIgnoreCase("funcionario@espacia.local").orElseThrow();
-        funcionario.setActivo(false);
-        userRepository.save(funcionario);
+        // Alguien suspende una cuenta de demostración desde una cuenta real
+        var estudiante = userRepository.findByEmailIgnoreCase("estudiante@espacia.local").orElseThrow();
+        estudiante.setActivo(false);
+        userRepository.save(estudiante);
 
         demoDataService.reiniciar();
 
-        assertThat(reservationRepository.findById(id)).isEmpty();
-        var restaurado = userRepository.findByEmailIgnoreCase("funcionario@espacia.local").orElseThrow();
-        assertThat(restaurado.getActivo()).isTrue();
-        assertThat(restaurado.getRol()).isEqualTo(Role.ROLE_FUNCIONARIO);
-        assertThat(get("/reservations/me", token).body().size()).isGreaterThan(0);
+        assertThat(incidentRepository.findById(id)).isEmpty();
+        var restaurada = userRepository.findByEmailIgnoreCase("estudiante@espacia.local").orElseThrow();
+        assertThat(restaurada.getActivo()).isTrue();
+        assertThat(restaurada.getRol()).isEqualTo(Role.ROLE_ESTUDIANTE);
+        String estudianteToken = login("estudiante@espacia.local", CLAVE);
+        assertThat(get("/reservations/me", estudianteToken).body().size()).isGreaterThan(0);
     }
 }
