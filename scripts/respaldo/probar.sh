@@ -7,7 +7,7 @@ export BACKUP_DIR="${BACKUP_DIR:-$(mktemp -d)}"
 export BACKUP_KEEP_DAYS=14
 C="-h ${DB_HOST:-localhost} -p ${DB_PORT:-5432} -U ${DB_USERNAME:-postgres}"
 export PGPASSWORD="${PGPASSWORD:-${DB_PASSWORD:-}}"
-DB="${DB_NAME:-bibliospace_db}"
+DB="${DB_NAME:-espacia_db}"
 q() { psql $C -d "$1" -tAc "$2"; }
 falla() { echo "FALLA: $*" >&2; exit 1; }
 

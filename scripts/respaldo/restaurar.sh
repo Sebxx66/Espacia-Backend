@@ -11,7 +11,7 @@ set -eu
 
 DB_HOST="${DB_HOST:-localhost}"
 DB_PORT="${DB_PORT:-5432}"
-DB_NAME="${DB_NAME:-bibliospace_db}"
+DB_NAME="${DB_NAME:-espacia_db}"
 DB_USERNAME="${DB_USERNAME:-postgres}"
 export PGPASSWORD="${PGPASSWORD:-${DB_PASSWORD:-}}"
 

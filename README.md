@@ -1,5 +1,11 @@
 # Espacia — Backend
 
+[![CI](https://github.com/Sebxx66/Espacia-Backend/actions/workflows/ci.yml/badge.svg)](https://github.com/Sebxx66/Espacia-Backend/actions/workflows/ci.yml)
+![Java 25](https://img.shields.io/badge/Java-25-ED8B00?logo=openjdk&logoColor=white)
+![Spring Boot 4](https://img.shields.io/badge/Spring%20Boot-4-6DB33F?logo=springboot&logoColor=white)
+![PostgreSQL 17](https://img.shields.io/badge/PostgreSQL-17-4169E1?logo=postgresql&logoColor=white)
+![Flyway](https://img.shields.io/badge/migraciones-Flyway-CC0200?logo=flyway&logoColor=white)
+
 API REST para reservar salas de estudio, equipos y talleres de una biblioteca.
 Spring Boot 4 · Java 25 · Spring Security + JWT · PostgreSQL.
 
@@ -25,6 +31,8 @@ La interfaz completa está en el repositorio del frontend.
 - Notificaciones dentro de la aplicación, incidencias de soporte técnico y panel de estadísticas.
 - Protección contra abuso: bloqueo temporal tras varios intentos fallidos (por cuenta y por red), topes de registros y de correos por red y en total, y verificación del correo antes del primer ingreso.
 - Registro de auditoría: quién cambió reglas, usuarios, espacios, anulaciones e incidencias, cuándo y desde qué red.
+- Demostración pública: cuentas de estudiante, funcionario y administrador de solo consulta que cualquiera puede usar sin registrarse, con reinicio automático cada noche.
+- Esquema de la base de datos versionado con Flyway.
 
 ## Seguridad
 
@@ -48,7 +56,7 @@ Para saber la IP real detrás de Render se usa la cabecera `CF-Connecting-IP`, q
 
 ## Puesta en marcha
 
-1. Levanta la base de datos (los datos se guardan en el volumen `bibliospace-data`):
+1. Levanta la base de datos (los datos se guardan en el volumen `espacia-data`):
 
    ```bash
    docker compose up -d
@@ -67,6 +75,39 @@ Al primer arranque se crean automáticamente:
 - **Un administrador** (si no existe ninguno), con el correo y la contraseña de `ADMIN_EMAIL` y `ADMIN_PASSWORD`.
   Defínelos antes del primer arranque y cambia la contraseña desde la aplicación después de entrar.
 - **Datos de demostración** (desactívalos con `SEED_DEMO_DATA=false`): seis espacios de ejemplo, dos estudiantes, un funcionario, reservas de las últimas semanas, incidencias y notificaciones.
+
+## Base de datos y migraciones
+
+Las tablas las crea y cambia **Flyway** con los scripts de `src/main/resources/db/migration`, en orden:
+
+| Script | Qué hace |
+|---|---|
+| `V1__esquema_inicial.sql` | Tablas, llaves, restricciones e índices de la versión 1.12.0 |
+| `V2__cuentas_de_demostracion.sql` | Columna `demo` en `users` y paso de las cuentas de demostración al dominio `@espacia.local` |
+
+Hibernate ya no modifica la base: al arrancar solo comprueba que las entidades coinciden con las tablas (`ddl-auto=validate`), así que un error en el modelo se detecta antes de recibir tráfico.
+
+Una base creada antes de Flyway (con `ddl-auto=update`, como la de producción) se toma como versión 1 sin tocar sus datos (`baseline-on-migrate`) y desde ahí se aplican las migraciones nuevas. La integración continua lo comprueba en cada push: crea una base con la versión 1.12.0, arranca la versión actual sobre ella y revisa el historial de Flyway.
+
+**Para cambiar el esquema:** agrega un script `V3__descripcion.sql` (nunca edites uno que ya se aplicó) y ajusta la entidad. Si agregas un estado nuevo a un enum, el script también debe actualizar su restricción `CHECK`.
+
+## Demostración pública
+
+Con `DEMO_MODE=true` la pantalla de inicio del frontend muestra **Prueba Espacia sin registrarte**, con botones para entrar como:
+
+| Cuenta | Correo | Qué puede hacer |
+|---|---|---|
+| Estudiante | `estudiante@espacia.local` | Todo lo de un estudiante: reservar, cancelar, extender |
+| Funcionario | `funcionario@espacia.local` | Registrar llegadas, finalizar reservas, reportar incidencias |
+| Administrador | `admin.demo@espacia.local` | Ver todo el panel, sin cambiar nada (solo consulta) |
+
+La contraseña es la de `SEED_DEMO_PASSWORD`. Para que nadie dañe la demostración:
+
+- `DemoAccountGuard` responde 403 a cualquier cambio del administrador de demostración y a los cambios de contraseña de todas las cuentas de demostración.
+- Todos los días a las 3:00 a. m. (`DEMO_RESET_CRON`) `DemoResetJob` borra las reservas, incidencias y notificaciones de las cuentas de demostración, las reactiva y vuelve a crear sus datos de ejemplo con fechas actuales.
+- Las cuentas de demostración se marcan con la columna `demo`; las cuentas reales no tienen ninguna restricción.
+
+`GET /api/v1/demo` (público) le dice al frontend si la demostración está activa y con qué cuentas.
 
 ## Correo electrónico
 
@@ -186,6 +227,7 @@ Cambia los nombres de los servicios si ya existe una instalación con esos nombr
    | `JWT_SECRET` | Botón *Generate* (32 caracteres o más) |
    | `ADMIN_NOMBRE`, `ADMIN_EMAIL`, `ADMIN_PASSWORD` | Administrador inicial, con una contraseña fuerte |
    | `SEED_DEMO_DATA` | `false` (sin cuentas de demostración) |
+   | `DEMO_MODE` | `true` para la demo pública con botones de acceso; `false` para una instalación real |
    | `APP_TIME_ZONE` | `America/Bogota` |
    | `FRONTEND_URL`, `CORS_ALLOWED_ORIGINS` | Dirección pública del frontend, sin `/` al final |
    | `MAIL_PROVIDER`, `MAIL_API_KEY`, `MAIL_FROM` | `brevo`, la clave de la API y el remitente verificado |
@@ -216,7 +258,11 @@ En producción puedes ocultarla con `API_DOCS=false`.
 ./mvnw test
 ```
 
-Usan una base de datos H2 en memoria, así que no necesitan Docker. Levantan el backend completo y lo llaman por HTTP para cubrir registro e inicio de sesión, bloqueo por intentos fallidos (por cuenta y por red), cabeceras de seguridad, auditoría, permisos por rol, las reglas de reserva y las reservas simultáneas. En GitHub se ejecutan solas en cada push (`.github/workflows/ci.yml`).
+Usan una base de datos H2 en memoria, así que no necesitan Docker. Las tablas las crean las mismas migraciones de Flyway que en producción. Levantan el backend completo y lo llaman por HTTP para cubrir registro e inicio de sesión, bloqueo por intentos fallidos (por cuenta y por red), cabeceras de seguridad, auditoría, permisos por rol, las reglas de reserva, las reservas simultáneas y la demostración pública.
+
+El reporte de cobertura queda en `target/site/jacoco/index.html` (JaCoCo).
+
+En GitHub se ejecutan solas en cada push (`.github/workflows/ci.yml`), junto con la imagen de Docker sobre PostgreSQL 17, la actualización de una base anterior a Flyway y los scripts de respaldo en Linux y Windows. La página de cada ejecución muestra el porcentaje de cobertura.
 
 ## Configuración
 
@@ -224,15 +270,17 @@ Todo se configura con variables de entorno; los valores por defecto coinciden co
 
 | Variable | Por defecto | Uso |
 |---|---|---|
-| `DB_URL` | `jdbc:postgresql://localhost:5432/bibliospace_db` | Conexión a PostgreSQL. Si no se define, se arma con `DB_HOST`, `DB_PORT` y `DB_NAME` (`localhost`, `5432`, `bibliospace_db`) |
+| `DB_URL` | `jdbc:postgresql://localhost:5432/espacia_db` | Conexión a PostgreSQL. Si no se define, se arma con `DB_HOST`, `DB_PORT` y `DB_NAME` (`localhost`, `5432`, `espacia_db`) |
 | `DB_USERNAME` | `postgres` | Usuario de la base de datos |
-| `DB_PASSWORD` | `bibliospace` | Contraseña de la base de datos (también la usa `docker compose`) |
+| `DB_PASSWORD` | `espacia` | Contraseña de la base de datos (también la usa `docker compose`) |
 | `JWT_SECRET` | sin valor | Clave para firmar los tokens (mínimo 32 caracteres). Si no se define, se genera una al azar en cada arranque y las sesiones se cierran al reiniciar. **Defínela siempre en producción** |
 | `CORS_ALLOWED_ORIGINS` | `localhost` y `127.0.0.1` en los puertos 5173 y 8443 | Orígenes del frontend, separados por coma. En desarrollo el frontend reenvía sus llamadas por su propio servidor, así que no hace falta agregar la IP de cada celular |
 | `FRONTEND_URL` | `http://localhost:8443` | Dirección del frontend, usada en los enlaces de los correos |
 | `ADMIN_NOMBRE`, `ADMIN_EMAIL`, `ADMIN_PASSWORD` | valores de desarrollo | Administrador inicial. **Defínelos en producción** |
 | `SEED_DEMO_DATA` | `true` | Crear datos de demostración |
 | `SEED_DEMO_PASSWORD` | valor de desarrollo | Contraseña de las cuentas de demostración |
+| `DEMO_MODE` | `false` | Demostración pública: cuentas visibles en la pantalla de inicio, administrador de solo consulta y reinicio nocturno |
+| `DEMO_RESET_CRON`, `DEMO_RESET_TIME` | `0 0 3 * * *`, `3:00 a. m.` | Cuándo se reinicia la demostración y cómo se muestra esa hora en la pantalla de inicio |
 | `MAIL_USERNAME`, `MAIL_PASSWORD` | vacío | Cuenta SMTP. Sin ellas el envío queda desactivado |
 | `MAIL_PROVIDER` | `smtp` | `smtp`, `brevo` o `resend`. Con `brevo` o `resend` los correos salen por la API HTTPS del servicio, necesario en servidores que bloquean SMTP (planes gratis de Render y Railway) |
 | `MAIL_API_KEY`, `MAIL_FROM` | vacío | Clave de la API de Brevo o Resend y correo remitente verificado en ese servicio |

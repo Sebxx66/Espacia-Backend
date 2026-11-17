@@ -8,9 +8,9 @@
         <version>4.1.1</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
-    <groupId>com.bibliospace</groupId>
+    <groupId>com.espacia</groupId>
     <artifactId>backend</artifactId>
-    <version>1.12.0</version>
+    <version>1.13.0</version>
     <name>backend</name>
     <description>API REST de Espacia: reserva de espacios y recursos de la biblioteca</description>
     
@@ -24,6 +24,15 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <!-- Migraciones de la base de datos: el esquema cambia con scripts SQL versionados (src/main/resources/db/migration) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-flyway</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
         </dependency>
         
         <!-- Spring Security -->
@@ -111,12 +120,32 @@
 
     <build>
         <plugins>
+            <!-- Cobertura de las pruebas: el reporte queda en target/site/jacoco/index.html -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>0.8.14</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
             <!-- Las pruebas corren con la zona horaria de la biblioteca, igual que la aplicación -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
-                    <argLine>-Duser.timezone=America/Bogota</argLine>
+                    <argLine>@{argLine} -Duser.timezone=America/Bogota</argLine>
                 </configuration>
             </plugin>
             <plugin>

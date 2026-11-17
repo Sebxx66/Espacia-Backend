@@ -34,6 +34,8 @@ services:
         generateValue: true
       - key: SEED_DEMO_DATA
         value: "false"
+      - key: DEMO_MODE               # demo pública: botones de acceso en el inicio y reinicio nocturno
+        value: "true"
       - key: APP_TIME_ZONE
         value: America/Bogota
       - key: MAIL_PROVIDER

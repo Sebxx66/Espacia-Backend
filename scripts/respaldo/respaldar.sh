@@ -7,13 +7,13 @@
 # Crea un archivo comprimido con toda la base (formato personalizado de pg_dump), comprueba que
 # se puede leer, lo anota en respaldos.log y borra los que tengan más de BACKUP_KEEP_DAYS días.
 # Variables (con sus valores por defecto):
-#   DB_HOST=localhost  DB_PORT=5432  DB_NAME=bibliospace_db  DB_USERNAME=postgres  DB_PASSWORD
+#   DB_HOST=localhost  DB_PORT=5432  DB_NAME=espacia_db  DB_USERNAME=postgres  DB_PASSWORD
 #   BACKUP_DIR=./respaldos  BACKUP_KEEP_DAYS=14
 set -eu
 
 DB_HOST="${DB_HOST:-localhost}"
 DB_PORT="${DB_PORT:-5432}"
-DB_NAME="${DB_NAME:-bibliospace_db}"
+DB_NAME="${DB_NAME:-espacia_db}"
 DB_USERNAME="${DB_USERNAME:-postgres}"
 BACKUP_DIR="${BACKUP_DIR:-./respaldos}"
 BACKUP_KEEP_DAYS="${BACKUP_KEEP_DAYS:-14}"

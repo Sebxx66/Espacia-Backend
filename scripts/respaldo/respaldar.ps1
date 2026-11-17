@@ -19,7 +19,7 @@ param(
     [string]$PgBin = $env:PG_BIN,
     [string]$Servidor = $(if ($env:DB_HOST) { $env:DB_HOST } else { "localhost" }),
     [int]$Puerto = $(if ($env:DB_PORT) { [int]$env:DB_PORT } else { 5432 }),
-    [string]$Base = $(if ($env:DB_NAME) { $env:DB_NAME } else { "bibliospace_db" }),
+    [string]$Base = $(if ($env:DB_NAME) { $env:DB_NAME } else { "espacia_db" }),
     [string]$Usuario = $(if ($env:DB_USERNAME) { $env:DB_USERNAME } else { "postgres" })
 )
 $ErrorActionPreference = "Stop"

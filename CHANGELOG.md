@@ -2,6 +2,16 @@
 
 Cambios del backend de Espacia, del más reciente al más antiguo. Cada entrada explica qué cambió y cómo está hecho.
 
+## 1.13.0 — Migraciones con Flyway y demostración pública
+
+- **Migraciones con Flyway.** El esquema de la base vive en scripts SQL versionados (`src/main/resources/db/migration`) en lugar de que Hibernate lo cambie solo con `ddl-auto=update`. `V1__esquema_inicial.sql` se generó a partir del esquema que creaba Hibernate en PostgreSQL 17 y se escribió de forma que también funcione en H2, así las pruebas usan los mismos scripts que producción. Hibernate ahora solo valida (`ddl-auto=validate`).
+- **Bases existentes sin riesgo.** Con `baseline-on-migrate` una base creada antes de Flyway (la de Supabase) se toma como versión 1 sin tocar sus datos. Un trabajo nuevo de la integración continua (`migraciones`) crea una base con la versión 1.12.0, arranca la versión actual encima y comprueba el historial de Flyway y las cuentas migradas.
+- **Adiós a `EstadoReservaConstraint`.** Ese arreglo reescribía al arrancar la restricción `CHECK` de los estados de reserva porque `ddl-auto=update` no la actualizaba. Con Flyway la restricción se cambia en una migración, como cualquier otro cambio del esquema.
+- **Demostración pública (`DEMO_MODE=true`).** La pantalla de inicio ofrece entrar como estudiante, funcionario o administrador sin registrarse (`GET /api/v1/demo`). `DemoAccountGuard` deja al administrador de demostración en solo consulta e impide cambiar la contraseña de las cuentas de demostración. `DemoResetJob` borra cada noche lo que hicieron los visitantes y recrea los datos de ejemplo con fechas actuales. Las cuentas se marcan con la nueva columna `demo` (`V2__cuentas_de_demostracion.sql`). La lógica de los datos de ejemplo pasó de `DataSeeder` a `DemoDataService`.
+- **Nombre Espacia en todo el código.** El paquete pasa de `com.bibliospace.backend` a `com.espacia.backend`; la base local, el volumen de Docker y el contenedor se llaman `espacia_db`, `espacia-data` y `espacia-db`; las cuentas de demostración usan `@espacia.local` (la migración V2 cambia las que ya existían). En producción no cambia nada porque la conexión se define con variables de entorno. En local, `docker compose up -d` crea un volumen nuevo y vacío.
+- **Cobertura de pruebas** con JaCoCo: el porcentaje aparece en la página de cada ejecución de la integración continua y el reporte completo se puede descargar.
+- **Pruebas:** `DemoModeApiTests` (cuentas públicas, solo consulta del administrador, contraseña bloqueada, cuentas reales sin restricciones y reinicio nocturno).
+
 ## 1.12.0 — Más seguridad, auditoría y base en Supabase
 
 - **Topes por red (IP) contra bots.** Además del bloqueo por cuenta, `RateLimitService` limita por red: 20 cuentas nuevas por hora (y 100 en total, para no agotar el cupo de Brevo ni enviar correos a desconocidos), 20 correos de verificación o recuperación por hora y 30 contraseñas incorrectas en 15 minutos aunque sean de cuentas distintas (frena a quien prueba una misma contraseña en muchos correos). Los aciertos no reinician el conteo por red. Los topes son amplios porque en un campus muchos estudiantes salen a internet con la misma IP, y se cambian con variables `LIMITE_*`. Se eligió esto en vez de un CAPTCHA: el usuario no tiene que hacer nada y no depende de un servicio externo.
